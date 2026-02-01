@@ -6,8 +6,17 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkMdx from "remark-mdx";
 import { visit } from "unist-util-visit";
+import {
+  getFrontmatterSlugSegment,
+  normalizeDate,
+  normalizeSlugSegments,
+  stripExtension,
+  toSlugSegment,
+} from "./content-utils.mjs";
 
 // 文章与目录树的核心数据读取逻辑（构建期/服务端执行）
+// - 统一负责：slug 解析、目录树构建、文章元信息抽取、TOC 生成
+// - 所有计算发生在构建期，满足“零动态”要求
 
 export type Locale = "en" | "zh";
 
@@ -15,10 +24,13 @@ export type PostFrontmatter = {
   title: string;
   description: string;
   date: string;
-  tags: string[];
+  // 排序优先级：数字越小越靠前（未填写视为 Infinity）
+  priority?: number;
   draft?: boolean;
   cover?: string;
   series?: string;
+  // 是否允许复制全文（默认 false）
+  allowCopy?: boolean;
 };
 
 export type PostMeta = PostFrontmatter & {
@@ -42,39 +54,47 @@ export type ContentTreeNode = {
   name: string;
   displayName: string;
   slug: string[];
+  // 用于目录树排序的优先级（数字越小越靠前）
+  priority?: number;
   children?: ContentTreeNode[];
 };
 
 // content 根目录
 const contentRoot = path.join(process.cwd(), "content");
 
-// 去除数字前缀与扩展名，保证排序和展示一致
-const stripNumericPrefix = (name: string) => name.replace(/^\d+[-_ ]*/, "");
-const stripExtension = (name: string) => name.replace(/\.mdx?$/i, "");
-const toSlugSegment = (name: string) => stripNumericPrefix(stripExtension(name));
-const toDisplayName = (name: string) => stripNumericPrefix(stripExtension(name));
-// frontmatter slug 覆盖（仅允许单段，不允许包含 /）
-const getFrontmatterSlugSegment = (data: Record<string, unknown>) => {
-  const raw = typeof data.slug === "string" ? data.slug.trim() : "";
-  if (!raw) return null;
-  if (raw.includes("/")) return null;
-  return raw;
-};
+// 展示名：title 缺失时回退到文件名（仅去扩展名）
+const toDisplayName = (name: string) => stripExtension(name);
 
-// 提取排序用的数字前缀（无前缀则排在最后）
-const parseLeadingNumber = (name: string) => {
-  const match = name.match(/^(\d+)/);
-  return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
-};
-
-// 目录树与侧边栏排序规则：优先数字前缀，其次按展示名排序
-const sortByPrefix = (a: string, b: string) => {
-  const numA = parseLeadingNumber(a);
-  const numB = parseLeadingNumber(b);
-  if (numA !== numB) {
-    return numA - numB;
+// 解析 frontmatter priority：非数值时回退为 Infinity
+// - 支持 number 或可转为 number 的字符串
+// - 任何非法值都视为最低优先级（Infinity）
+const parsePriority = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
   }
-  return toDisplayName(a).localeCompare(toDisplayName(b), "en", {
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return Number.POSITIVE_INFINITY;
+};
+
+// 目录树排序规则：
+// 1) priority 数字越小越靠前（未填写视为 Infinity）
+// 2) priority 相同或缺失时，按展示名字母序排序
+// 3) 兜底使用 slug 保证排序稳定（避免同名导致排序抖动）
+const compareNodes = (a: ContentTreeNode, b: ContentTreeNode, locale: Locale) => {
+  const aPriority = a.priority ?? Number.POSITIVE_INFINITY;
+  const bPriority = b.priority ?? Number.POSITIVE_INFINITY;
+  if (aPriority !== bPriority) return aPriority - bPriority;
+  const sortLocale = locale === "zh" ? "zh" : "en";
+  const byName = a.displayName.localeCompare(b.displayName, sortLocale, {
+    sensitivity: "base",
+    numeric: true,
+  });
+  if (byName !== 0) return byName;
+  // 兜底：使用 slug 保证排序稳定
+  return a.slug.join("/").localeCompare(b.slug.join("/"), sortLocale, {
     sensitivity: "base",
     numeric: true,
   });
@@ -108,6 +128,8 @@ const readPostFile = (filePath: string) => {
 };
 
 // 将文件路径转换为 slug 段数组（保留目录层级）
+// - 路径分隔符根据平台自动处理
+// - slug 段仅去扩展名，不剥离数字前缀
 const toSlugSegmentsFromPath = (filePath: string, localeRoot: string) => {
   const relative = path.relative(localeRoot, filePath);
   return relative.split(path.sep).map(toSlugSegment);
@@ -126,6 +148,7 @@ const extractHeadingText = (node: any): string => {
 };
 
 // 解析 Markdown/MDX，提取 h1~h3 作为目录
+// - 目录深度限制为 3 层，避免 TOC 过长
 const extractToc = (content: string): TocItem[] => {
   const tree = unified().use(remarkParse).use(remarkMdx).parse(content);
   const slugger = new GithubSlugger();
@@ -135,6 +158,7 @@ const extractToc = (content: string): TocItem[] => {
     if (node.depth > 3) return;
     const value = extractHeadingText(node).trim();
     if (!value) return;
+    // 同一标题可能重复，使用 github-slugger 保证唯一锚点
     items.push({
       depth: node.depth,
       value,
@@ -145,27 +169,11 @@ const extractToc = (content: string): TocItem[] => {
   return items;
 };
 
-// 统一日期格式（YYYY-MM-DD）
-const normalizeDate = (value: unknown) => {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value.toISOString().slice(0, 10);
-  }
-  return String(value ?? "");
-};
-
 // 目录页规则：目录内同名 MDX 作为目录页 => slug 末段与父段相同则去重
-const normalizeSlugSegments = (segments: string[]) => {
-  if (segments.length >= 2) {
-    const last = segments[segments.length - 1];
-    const prev = segments[segments.length - 2];
-    if (last === prev) {
-      return segments.slice(0, -1);
-    }
-  }
-  return segments;
-};
+// - 例如 /react/react.mdx 映射为 /react/
 
 // 计算文章最终 slug（支持 frontmatter slug 覆盖）
+// - 仅覆盖最后一段，且需符合 frontmatter 规则
 const getPostSlugSegments = (
   filePath: string,
   localeRoot: string,
@@ -174,12 +182,16 @@ const getPostSlugSegments = (
   const segments = toSlugSegmentsFromPath(filePath, localeRoot);
   const override = getFrontmatterSlugSegment(data);
   if (override) {
+    // 仅覆盖最后一段（不允许跨目录）
     segments[segments.length - 1] = override;
   }
   return normalizeSlugSegments(segments);
 };
 
 // 将 slug 解析回文件路径（用于动态路由解析）
+// - 遍历所有 mdx 文件（构建期可接受）
+// - 忽略 draft
+// - 同时考虑 frontmatter slug 覆盖规则
 const resolveSlugToFile = (localeRoot: string, slugSegments: string[]) => {
   const target = normalizeSlugSegments(slugSegments).join("/");
   const files = getAllMdxFiles(localeRoot);
@@ -197,6 +209,9 @@ const resolveSlugToFile = (localeRoot: string, slugSegments: string[]) => {
 };
 
 // 获取语言下的全部文章元数据（用于列表、搜索与索引）
+// - 自动过滤 draft
+// - 统一日期格式
+// - 结果按日期倒序排列
 export const getAllPosts = (locale: Locale): PostMeta[] => {
   const localeRoot = getLocaleRoot(locale);
   const files = getAllMdxFiles(localeRoot);
@@ -214,10 +229,10 @@ export const getAllPosts = (locale: Locale): PostMeta[] => {
       title: String(data.title ?? ""),
       description: String(data.description ?? ""),
       date: normalizeDate(data.date),
-      tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
       draft: Boolean(data.draft),
       cover: data.cover ? String(data.cover) : undefined,
       series: data.series ? String(data.series) : undefined,
+      allowCopy: Boolean(data.allowCopy),
       slug,
       locale,
     });
@@ -236,6 +251,7 @@ export const getAllPostSlugs = (locale: Locale) =>
   getAllPosts(locale).map((post) => post.slug);
 
 // 根据 slug 获取完整文章内容与 TOC
+// - 若 slug 仅指向目录页，也会被 normalize 后解析
 export const getPostBySlug = (locale: Locale, slugSegments: string[]): PostData => {
   const localeRoot = getLocaleRoot(locale);
   const normalized = normalizeSlugSegments(slugSegments);
@@ -246,10 +262,10 @@ export const getPostBySlug = (locale: Locale, slugSegments: string[]): PostData 
     title: String(data.title ?? ""),
     description: String(data.description ?? ""),
     date: normalizeDate(data.date),
-    tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     draft: Boolean(data.draft),
     cover: data.cover ? String(data.cover) : undefined,
     series: data.series ? String(data.series) : undefined,
+    allowCopy: Boolean(data.allowCopy),
     slug: normalized,
     locale,
     content,
@@ -260,7 +276,8 @@ export const getPostBySlug = (locale: Locale, slugSegments: string[]): PostData 
 // 判断目录内是否存在“同名 MDX 目录页”
 // - 仅检查当前目录的直接文件（不向下递归）
 // - frontmatter slug 覆盖会影响匹配结果
-const hasDirectoryIndexPage = (
+// - 同时返回目录页 priority（若无目录页则为 null）
+const getDirectoryIndexPriority = (
   dirPath: string,
   localeRoot: string,
   dirSlug: string[]
@@ -275,27 +292,26 @@ const hasDirectoryIndexPage = (
     if (data.draft) continue;
     const slug = getPostSlugSegments(filePath, localeRoot, data);
     if (slug.join("/") === dirSlug.join("/")) {
-      return true;
+      return parsePriority(data.priority);
     }
   }
 
-  return false;
+  return null;
 };
 
 // 构建目录树：文件夹节点可指向目录页，文件节点指向文章页
+// - 文件夹节点 priority 来源于目录页 frontmatter（若无则 Infinity）
+// - 文件节点 priority 来源于自身 frontmatter
+// - 文件夹与文件使用同一排序规则（priority + 字母序）
 const buildTree = (
   currentDir: string,
   parentSegments: string[],
   locale: Locale,
   localeRoot: string
 ): ContentTreeNode[] => {
-  const entries = listDir(currentDir)
-    .filter((entry) => entry.isDirectory() || (entry.isFile() && isMdxFile(entry.name)))
-    .sort((a, b) => {
-      if (a.isDirectory() && !b.isDirectory()) return -1;
-      if (!a.isDirectory() && b.isDirectory()) return 1;
-      return sortByPrefix(a.name, b.name);
-    });
+  const entries = listDir(currentDir).filter(
+    (entry) => entry.isDirectory() || (entry.isFile() && isMdxFile(entry.name))
+  );
 
   const nodes: ContentTreeNode[] = [];
 
@@ -303,15 +319,17 @@ const buildTree = (
     const fullPath = path.join(currentDir, entry.name);
 
     if (entry.isDirectory()) {
-      const displayName = toDisplayName(entry.name);
-      const slugSegment = toSlugSegment(entry.name);
+      // 目录节点：目录名就是显示名（不剥离数字前缀）
+      const displayName = entry.name;
+      const slugSegment = entry.name;
       const nextSegments = [...parentSegments, slugSegment];
       const children = buildTree(fullPath, nextSegments, locale, localeRoot);
-      const hasIndexPage = hasDirectoryIndexPage(
+      const indexPriority = getDirectoryIndexPriority(
         fullPath,
         localeRoot,
         nextSegments
       );
+      const hasIndexPage = indexPriority !== null;
       // 目录没有子内容且没有目录页时，才从树中剔除
       if (children.length === 0 && !hasIndexPage) {
         continue;
@@ -322,6 +340,8 @@ const buildTree = (
         name: entry.name,
         displayName,
         slug: nextSegments,
+        // 若存在同名目录页则使用其 priority，否则视为 Infinity
+        priority: indexPriority ?? Number.POSITIVE_INFINITY,
         children,
       });
     } else {
@@ -330,16 +350,19 @@ const buildTree = (
         continue;
       }
 
+      // 文件节点：优先显示 frontmatter title
       const title =
         typeof data.title === "string" ? data.title.trim() : "";
       const displayName = title || toDisplayName(entry.name);
-      const slugSegment = getFrontmatterSlugSegment(data) ?? toSlugSegment(entry.name);
+      const slugSegment =
+        getFrontmatterSlugSegment(data) ?? toSlugSegment(entry.name);
       const nextSegments = [...parentSegments, slugSegment];
 
       if (
         parentSegments.length > 0 &&
         slugSegment === parentSegments[parentSegments.length - 1]
       ) {
+        // 目录同名文章用于目录页展示，避免在列表中重复出现
         continue;
       }
 
@@ -349,11 +372,14 @@ const buildTree = (
         name: entry.name,
         displayName,
         slug: nextSegments,
+        priority: parsePriority(data.priority),
       });
     }
   }
 
-  return nodes;
+  // 统一排序：priority 数字越小越靠前，其次按显示名排序
+  // - 文件夹与文件共用同一排序规则
+  return nodes.sort((a, b) => compareNodes(a, b, locale));
 };
 
 // 对外提供的目录树入口
@@ -400,6 +426,33 @@ export const getNodeBySlug = (
   }
 
   return current;
+};
+
+// 生成面包屑显示名称列表（与目录树 displayName 对齐）
+// - 若节点未找到，回退为解码后的 slug 段
+export const getBreadcrumbLabels = (
+  locale: Locale,
+  slugSegments: string[]
+) => {
+  const tree = getContentTree(locale);
+  const labels: string[] = [];
+  let currentNodes = tree;
+  let currentPath: string[] = [];
+
+  slugSegments.forEach((segment) => {
+    currentPath = [...currentPath, segment];
+    const key = currentPath.join("/");
+    const node = currentNodes.find((item) => item.slug.join("/") === key);
+    if (!node) {
+      labels.push(decodeURIComponent(segment));
+      currentNodes = [];
+      return;
+    }
+    labels.push(node.displayName);
+    currentNodes = node.children ?? [];
+  });
+
+  return labels;
 };
 
 // 仅当 slug 对应目录节点时返回

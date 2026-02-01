@@ -8,6 +8,7 @@ import type { TocItem } from "@/lib/posts";
 export const TocCard = ({ items }: { items: TocItem[] }) => {
   const [open, setOpen] = useState(true);
 
+  // 无目录时不渲染，避免占位
   if (items.length === 0) return null;
 
   return (

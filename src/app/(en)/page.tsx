@@ -6,6 +6,7 @@ import { RecentPosts } from "@/components/recent-history/RecentPosts";
 import { getAllPosts } from "@/lib/posts";
 import { siteConfig } from "@/lib/site";
 
+// 首页 SEO 元信息
 export const metadata: Metadata = {
   title: "Home",
   description: siteConfig.description,
@@ -19,12 +20,15 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
+  // 取最近 5 篇文章用于首页展示
   const posts = getAllPosts("en").slice(0, 5);
+  // 最新一篇用于 Quick Actions
   const latest = posts[0];
 
   return (
     <div className="mx-auto max-w-[820px] space-y-10">
       <section className="rounded-lg border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-6">
+        {/* About Me：模拟 System Prompt 风格 */}
         <div className="text-xs text-[var(--color-fg-muted)]">&gt; System: About Me</div>
         <p className="mt-3 text-sm leading-6 text-[var(--color-fg-default)]">
           I build developer tooling, document systems, and knowledge workflows.
@@ -34,23 +38,24 @@ export default function Home() {
       </section>
 
       <section className="rounded-lg border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-6">
+        {/* Quick Actions：模拟 Copilot 建议指令 */}
         <div className="text-xs text-[var(--color-fg-muted)]">&gt; Quick Actions</div>
         <div className="mt-4 flex flex-wrap gap-3 text-xs">
           <Link
-            href="/directory"
+            href="/directory/"
             className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-canvas-default)] px-4 py-2 text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
           >
             &gt; Browse knowledge tree
           </Link>
           <Link
-            href="/search"
+            href="/search/"
             className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-canvas-default)] px-4 py-2 text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
           >
             &gt; Search recent ideas
           </Link>
           {latest ? (
             <Link
-              href={`/${latest.slug.join("/")}`}
+              href={`/${latest.slug.join("/")}/`}
               className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-canvas-default)] px-4 py-2 text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
             >
               &gt; View latest post
@@ -66,6 +71,7 @@ export default function Home() {
         <RecentPosts posts={posts} locale="en" />
       </section>
 
+      {/* 首页独立评论区 */}
       <GiscusComments locale="en" />
     </div>
   );

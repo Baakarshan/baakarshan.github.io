@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { GiscusComments } from "@/components/comments/GiscusComments";
 import { siteConfig } from "@/lib/site";
 
+// 简历页 SEO 元信息
 export const metadata: Metadata = {
   title: "Resume",
   description: "Professional resume.",
@@ -27,6 +28,7 @@ export default function ResumePage() {
         </p>
       </header>
 
+      {/* 信息区：左侧摘要 + 右侧技能 */}
       <section className="grid grid-cols-12 gap-6">
         <div className="col-span-5 rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-4">
           <h2 className="text-sm font-semibold text-[var(--color-fg-default)]">
@@ -60,6 +62,7 @@ export default function ResumePage() {
         </div>
       </section>
 
+      {/* 经验区块 */}
       <section className="rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-4">
         <h2 className="text-sm font-semibold text-[var(--color-fg-default)]">
           Experience
@@ -76,6 +79,7 @@ export default function ResumePage() {
         </div>
       </section>
 
+      {/* 教育信息 */}
       <section className="rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-4">
         <h2 className="text-sm font-semibold text-[var(--color-fg-default)]">
           Education
@@ -85,6 +89,7 @@ export default function ResumePage() {
         </p>
       </section>
 
+      {/* 简历页独立评论区 */}
       <GiscusComments locale="en" />
     </div>
   );

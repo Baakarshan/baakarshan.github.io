@@ -15,6 +15,7 @@ export const ZoomImage = ({ src, alt = "", ...props }: any) => {
         alt={alt}
         {...props}
         onClick={() => setOpen(true)}
+        // 提示可点击放大
         className={`my-4 cursor-zoom-in rounded-md border border-[var(--color-border-default)] ${
           props.className ?? ""
         }`}
@@ -35,6 +36,7 @@ export const ZoomImage = ({ src, alt = "", ...props }: any) => {
             src={src}
             alt={alt}
             onClick={(event) => event.stopPropagation()}
+            // 最大化但保留屏幕边距，避免超出视口
             className="max-h-[90vh] max-w-[90vw] rounded-md border border-[var(--color-border-default)]"
           />
         </div>

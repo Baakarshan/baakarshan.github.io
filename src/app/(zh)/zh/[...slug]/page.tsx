@@ -6,14 +6,17 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { DirectoryTree } from "@/components/layout/DirectoryTree";
 import { MDXRenderer } from "@/components/mdx/MDXRenderer";
 import { TocCard } from "@/components/mdx/TocCard";
+import { CopyFullButton } from "@/components/mdx/CopyFullButton";
 import {
   getAllFolderSlugs,
   getAllPostSlugs,
+  getBreadcrumbLabels,
   getFolderNodeBySlug,
   getPostBySlug,
 } from "@/lib/posts";
 import { siteConfig } from "@/lib/site";
 
+// 预先生成英文站 slug 集合，用于构建 alternates
 const enPostSlugSet = new Set(
   getAllPostSlugs("en").map((slug) => slug.join("/"))
 );
@@ -25,6 +28,7 @@ const hasEnSlug = (slugSegments: string[]) => {
   return enPostSlugSet.has(key) || enFolderSlugSet.has(key);
 };
 const buildAlternates = (slugSegments: string[]) => {
+  // 仅当英文站存在对应路径时才输出 alternates
   if (!hasEnSlug(slugSegments)) return null;
   return {
     en: `${siteConfig.siteUrl}/${slugSegments.join("/")}/`,
@@ -33,6 +37,7 @@ const buildAlternates = (slugSegments: string[]) => {
 };
 
 export const generateStaticParams = async () => {
+  // 文章页 + 目录页统一进入静态路由
   const postSlugs = getAllPostSlugs("zh");
   const folderSlugs = getAllFolderSlugs("zh");
   const map = new Map<string, string[]>();
@@ -55,6 +60,7 @@ export const generateMetadata = async ({
     : resolved.slug
     ? [resolved.slug]
     : [];
+  // 根路径不应出现在此路由，兜底返回站点信息
   if (slugSegments.length === 0) {
     return {
       title: siteConfig.name,
@@ -64,6 +70,7 @@ export const generateMetadata = async ({
 
   let post;
   try {
+    // 优先按文章解析
     post = getPostBySlug("zh", slugSegments);
   } catch {
     post = null;
@@ -87,6 +94,7 @@ export const generateMetadata = async ({
     };
   }
 
+  // 再尝试按目录页解析
   const folderNode = getFolderNodeBySlug("zh", slugSegments);
   if (folderNode) {
     const canonical = `${siteConfig.siteUrl}/zh/${slugSegments.join("/")}/`;
@@ -125,6 +133,8 @@ export default async function ZhArticlePage({
     notFound();
   }
 
+  const breadcrumbLabels = getBreadcrumbLabels("zh", slugSegments);
+
   let post;
   try {
     post = getPostBySlug("zh", slugSegments);
@@ -133,13 +143,18 @@ export default async function ZhArticlePage({
   }
 
   if (!post) {
+    // 当非文章时尝试渲染目录页
     const folderNode = getFolderNodeBySlug("zh", slugSegments);
     if (!folderNode) {
       notFound();
     }
     return (
       <div className="mx-auto max-w-[820px] space-y-6">
-        <Breadcrumbs locale="zh" segments={slugSegments} />
+        <Breadcrumbs
+          locale="zh"
+          segments={slugSegments}
+          labels={breadcrumbLabels}
+        />
         <header>
           <h1 className="text-lg font-semibold text-[var(--color-fg-default)]">
             {folderNode.displayName}
@@ -164,35 +179,30 @@ export default async function ZhArticlePage({
       name: "Baakarshan",
     },
     description: post.description,
-    keywords: post.tags.join(", "),
     url,
   };
 
   return (
     <article className="mx-auto max-w-[820px]">
+      {/* 结构化数据：增强搜索引擎收录 */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="space-y-4">
-        <Breadcrumbs locale="zh" segments={slugSegments} />
-        <h1 className="text-2xl font-semibold text-[var(--color-fg-default)]">
-          {post.title}
-        </h1>
+        <Breadcrumbs
+          locale="zh"
+          segments={slugSegments}
+          labels={breadcrumbLabels}
+        />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="flex-1 text-2xl font-semibold text-[var(--color-fg-default)]">
+            {post.title}
+          </h1>
+          {post.allowCopy ? <CopyFullButton content={post.content} /> : null}
+        </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-fg-muted)]">
           <span>{format(new Date(post.date), "MMM dd, yyyy")}</span>
-          <span>·</span>
-          <div className="flex flex-wrap items-center gap-2">
-            {post.tags.map((tag) => (
-              <a
-                key={tag}
-                href={`/zh/search?q=${encodeURIComponent(tag)}`}
-                className="rounded-full border border-[var(--color-border-default)] px-2 py-0.5 text-[10px] hover:bg-[var(--color-item-hover)]"
-              >
-                {tag}
-              </a>
-            ))}
-          </div>
         </div>
       </div>
 

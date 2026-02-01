@@ -19,26 +19,40 @@ import { siteConfig } from "@/lib/site";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 // LocalStorage key：侧边栏折叠状态与目录展开状态
+// - 保证刷新后仍保持用户上次的侧边栏状态
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 const SIDEBAR_OPEN_KEY = "sidebar-open";
 
-// 通过路径判断语言
+// 通过路径判断语言（/zh 开头即中文）
+// - 仅依赖路径前缀，不做自动重定向
 const getLocaleFromPath = (pathname: string) =>
   pathname.startsWith("/zh") ? "zh" : "en";
 
 const toBasePath = (locale: Locale) => (locale === "zh" ? "/zh" : "");
 
+// 统一带尾斜杠的路径（与 trailingSlash: true 一致）
+const withTrailingSlash = (value: string) =>
+  value === "/" ? "/" : value.endsWith("/") ? value : `${value}/`;
+
+// 统一用于 active 判断的路径归一化
+const normalizePath = (value: string) =>
+  value !== "/" && value.endsWith("/") ? value.slice(0, -1) : value;
+
 // 拼接内容页链接（与文件结构一致）
+// - 与 buildTree 生成的 slug 保持一致
 const buildHref = (locale: Locale, slug: string[]) => {
   const base = toBasePath(locale);
-  if (slug.length === 0) return base || "/";
-  return `${base}/${slug.join("/")}`;
+  if (slug.length === 0) return base ? `${base}/` : "/";
+  return withTrailingSlash(`${base}/${slug.join("/")}`);
 };
 
 // 抽象 localStorage 持久化状态
+// - 组件内复用，避免重复读写逻辑
 const useLocalStorageState = <T,>(key: string, initialValue: T) => {
   const [value, setValue] = useState<T>(initialValue);
 
+  // 首次挂载：从 localStorage 读取
+  // - JSON 解析失败则回退为初始值
   useEffect(() => {
     const stored = localStorage.getItem(key);
     if (!stored) return;
@@ -49,15 +63,14 @@ const useLocalStorageState = <T,>(key: string, initialValue: T) => {
     }
   }, [key]);
 
+  // 状态变化：写入 localStorage
+  // - 保证用户偏好持久化
   useEffect(() => {
     localStorage.setItem(key, JSON.stringify(value));
   }, [key, value]);
 
   return [value, setValue] as const;
 };
-
-// 英文目录展示时把连字符替换为空格，更易读
-const formatLabel = (label: string) => label.replace(/-/g, " ");
 
 type TreeProps = {
   nodes: ContentTreeNode[];
@@ -77,6 +90,7 @@ const SidebarTree = ({
   collapsed,
 }: TreeProps) => {
   // 展开/折叠某个目录节点
+  // - 以 locale + slug 作为唯一 key
   const toggleFolder = (key: string) => {
     setOpenMap({
       ...openMap,
@@ -91,9 +105,9 @@ const SidebarTree = ({
         const key = `${locale}/${node.slug.join("/")}`;
         const isOpen = openMap[key] ?? true;
         const href = buildHref(locale, node.slug);
-        const isActive = activePath === href || activePath === `${href}/`;
-        const label =
-          node.type === "folder" ? formatLabel(node.displayName) : node.displayName;
+        const isActive =
+          normalizePath(activePath) === normalizePath(href);
+        const label = node.displayName;
 
         if (node.type === "folder") {
           return (
@@ -181,6 +195,7 @@ export const Sidebar = ({
   );
 
   // 进入页面时自动展开当前路径上的目录链路
+  // - 仅处理当前语言路径
   useEffect(() => {
     const segments = pathname.replace(/^\/zh/, "").split("/").filter(Boolean);
     if (segments.length === 0) return;
@@ -195,22 +210,24 @@ export const Sidebar = ({
   }, [pathname, locale]);
 
   // 顶部导航（Home/Directory/Search/Resume）
+  // - 与路由保持一致，统一追加尾斜杠
   const navItems = useMemo(() => {
     const base = toBasePath(locale);
+    const homeHref = base ? `${base}/` : "/";
     return [
-      { href: base || "/", label: locale === "zh" ? "首页" : "Home", icon: Home },
+      { href: homeHref, label: locale === "zh" ? "首页" : "Home", icon: Home },
       {
-        href: `${base}/directory`,
+        href: withTrailingSlash(`${base}/directory`),
         label: locale === "zh" ? "目录" : "Directory",
         icon: BookText,
       },
       {
-        href: `${base}/search`,
+        href: withTrailingSlash(`${base}/search`),
         label: locale === "zh" ? "搜索" : "Search",
         icon: Search,
       },
       {
-        href: `${base}/resume`,
+        href: withTrailingSlash(`${base}/resume`),
         label: locale === "zh" ? "简历" : "Resume",
         icon: User,
       },
@@ -248,13 +265,15 @@ export const Sidebar = ({
           collapsed ? "justify-center" : ""
         }`}
       >
+        {/* 仅做视觉占位，不绑定实际新建行为 */}
         {!collapsed && <span>New Chat</span>}
         {collapsed && <span>+</span>}
       </button>
 
       <div className="mt-4 space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname === `${item.href}/`;
+          const isActive =
+            normalizePath(pathname) === normalizePath(item.href);
           const Icon = item.icon;
           return (
             <Link

@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { LanguageAwareNotFound } from "@/components/layout/LanguageAwareNotFound";
 
 // 中文站 404：根据路径判断语言，确保静态 404 也能正确显示

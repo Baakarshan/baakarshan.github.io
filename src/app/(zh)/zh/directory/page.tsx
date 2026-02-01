@@ -5,6 +5,7 @@ import { DirectoryTree } from "@/components/layout/DirectoryTree";
 import { getContentTree } from "@/lib/posts";
 import { siteConfig } from "@/lib/site";
 
+// 中文目录页 SEO 元信息
 export const metadata: Metadata = {
   title: "目录",
   description: "完整知识目录。",
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default function ZhDirectoryPage() {
+  // 与侧边栏一致的目录树
   const tree = getContentTree("zh");
 
   return (

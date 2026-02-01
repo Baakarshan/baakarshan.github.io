@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// 根据路径判断语言（用于 404 自适应）
 const getLangFromPath = (pathname: string) =>
   pathname.startsWith("/zh") ? "zh" : "en";
 
@@ -15,10 +16,11 @@ type NotFoundCopy = {
 
 type LanguageAwareNotFoundProps = {
   defaultLang: "en" | "zh";
-  title: string;
-  description: string;
-  actionLabel: string;
-  homeHref: string;
+  // 允许调用方按需覆盖文案；未传入时使用默认文案
+  title?: string;
+  description?: string;
+  actionLabel?: string;
+  homeHref?: string;
 };
 
 const zhCopy: NotFoundCopy = {
@@ -46,6 +48,7 @@ export const LanguageAwareNotFound = ({
   const lang = pathname ? getLangFromPath(pathname) : defaultLang;
   const copy = lang === "zh" ? zhCopy : enCopy;
 
+  // 允许调用方传入自定义文案，否则使用默认文案
   const finalTitle = title ?? copy.title;
   const finalDescription = description ?? copy.description;
   const finalActionLabel = actionLabel ?? copy.actionLabel;

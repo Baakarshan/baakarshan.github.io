@@ -10,16 +10,16 @@ type SearchItem = {
   title: string;
   description: string;
   slug: string;
-  tags: string[];
-  date: string;
   snippet: string;
 };
 
 // 转义正则特殊字符，避免高亮时异常
+// - 用户输入可能包含 * ? 等字符，需转义后再拼正则
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // 简易高亮：把查询词用 <mark> 包裹
+// - 仅做直观展示，不做复杂分词
 const highlight = (text: string, query: string) => {
   if (!query) return text;
   const safe = escapeRegExp(query);
@@ -46,12 +46,15 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
   const searchParams = useSearchParams();
 
   // 加载对应语言的搜索索引
+  // - 优先读取 manifest（支持分片）
+  // - manifest 失败时回退单文件索引
   useEffect(() => {
     let cancelled = false;
     const localeKey = locale === "zh" ? "zh" : "en";
     const manifestUrl = `/search-index-${localeKey}-manifest.json`;
     const fallbackUrl = `/search-index-${localeKey}.json`;
 
+    // 统一的 fetch 入口，失败时抛错给上层处理
     const loadFromUrl = async (url: string) => {
       const res = await fetch(url);
       if (!res.ok) throw new Error("search-index fetch failed");
@@ -61,11 +64,13 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
     const loadIndex = async () => {
       try {
         const manifest = await loadFromUrl(manifestUrl);
+        // 单文件索引（小体积）
         if (manifest?.type === "single" && manifest.file) {
           const data = await loadFromUrl(manifest.file);
           if (!cancelled) setItems(Array.isArray(data) ? data : []);
           return;
         }
+        // 分片索引（大体积）
         if (manifest?.type === "sharded" && Array.isArray(manifest.shards)) {
           const files = manifest.shards
             .map((shard: { file?: string }) => shard.file)
@@ -81,6 +86,7 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
         // 忽略，回退到旧版单文件索引
       }
 
+      // 回退策略：直接读取 search-index-xx.json（兼容旧构建产物）
       try {
         const data = await loadFromUrl(fallbackUrl);
         if (!cancelled) setItems(Array.isArray(data) ? data : []);
@@ -95,13 +101,16 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
     };
   }, [locale]);
 
-  // 读取 URL 查询参数，支持标签点击带入搜索词
+  // 读取 URL 查询参数，支持直接带入搜索词
+  // - URL 变化时同步输入框
   useEffect(() => {
     const q = searchParams.get("q") ?? "";
-    if (q) setQuery(q);
+    // 无论是否为空都同步，避免 URL 清空后输入框残留旧值
+    setQuery(q);
   }, [searchParams]);
 
   // Fuse.js 初始化：标题权重最高
+  // - threshold 越低越严格，避免噪音结果
   const fuse = useMemo(
     () =>
       new Fuse(items, {

@@ -5,6 +5,17 @@ import type { ContentTreeNode, Locale } from "@/lib/posts";
 // 目录树渲染：用于 /directory 与目录页
 const toBasePath = (locale: Locale) => (locale === "zh" ? "/zh" : "");
 
+// 统一添加尾斜杠，避免静态导出时的路径不一致
+const withTrailingSlash = (value: string) =>
+  value === "/" ? "/" : value.endsWith("/") ? value : `${value}/`;
+
+// 计算目录节点对应的 URL
+const toNodeHref = (locale: Locale, slug: string[]) => {
+  const base = toBasePath(locale);
+  if (slug.length === 0) return base ? `${base}/` : "/";
+  return withTrailingSlash(`${base}/${slug.join("/")}`);
+};
+
 const renderNodes = (
   nodes: ContentTreeNode[],
   locale: Locale,
@@ -13,7 +24,8 @@ const renderNodes = (
   return (
     <ul className="space-y-2">
       {nodes.map((node) => {
-        const href = `${toBasePath(locale)}/${node.slug.join("/")}`;
+        // 目录与文章都使用统一的 trailingSlash 形式
+        const href = toNodeHref(locale, node.slug);
         if (node.type === "folder") {
           return (
             <li key={`${node.slug.join("/")}-${depth}`}>

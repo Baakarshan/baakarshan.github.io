@@ -5,6 +5,10 @@ import type { Locale, PostMeta } from "@/lib/posts";
 
 const toBasePath = (locale: Locale) => (locale === "zh" ? "/zh" : "");
 
+// 统一添加尾斜杠，避免静态导出下的路径歧义
+const withTrailingSlash = (value: string) =>
+  value === "/" ? "/" : value.endsWith("/") ? value : `${value}/`;
+
 // 首页最近文章列表
 export const RecentPosts = ({
   posts,
@@ -20,7 +24,7 @@ export const RecentPosts = ({
       {posts.map((post) => (
         <Link
           key={post.slug.join("/")}
-          href={`${base}/${post.slug.join("/")}`}
+          href={withTrailingSlash(`${base}/${post.slug.join("/")}`)}
           className="block rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] px-4 py-3 text-sm text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
         >
           <div className="flex items-center justify-between gap-4">

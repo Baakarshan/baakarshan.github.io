@@ -33,6 +33,7 @@ const posts = getAllPosts("en")
   )
   .slice(0, 20);
 
+// 组装 RSS item
 const items = posts
   .map(({ data, content, slug }) => {
     const url = new URL(toUrl("en", slug), SITE_URL).toString();
@@ -42,6 +43,7 @@ const items = posts
   })
   .join("");
 
+// RSS 2.0 基础结构
 const rss = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0">\n  <channel>\n    <title>Baakarshan's Knowledge Base</title>\n    <link>${SITE_URL}</link>\n    <description>Latest posts from Baakarshan's Knowledge Base</description>\n    <language>en-us</language>${items}\n  </channel>\n</rss>\n`;
 
 if (!fs.existsSync(PUBLIC_ROOT)) {

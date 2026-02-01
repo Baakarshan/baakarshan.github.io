@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { SearchClient } from "@/components/search/SearchClient";
 import { siteConfig } from "@/lib/site";
 
+// 搜索页 SEO 元信息
 export const metadata: Metadata = {
   title: "Search",
   description: "Search the knowledge base.",
@@ -29,6 +30,7 @@ export default function SearchPage() {
       </header>
 
       <Suspense
+        // 搜索索引读取为客户端逻辑，使用 Suspense 兜底
         fallback={
           <div className="rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-4 text-xs text-[var(--color-fg-muted)]">
             Loading search...

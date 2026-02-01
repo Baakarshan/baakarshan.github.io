@@ -9,6 +9,7 @@ import { useTheme } from "@/components/theme/ThemeProvider";
 export const MermaidBlock = ({ code }: { code: string }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { resolvedTheme } = useTheme();
+  // 为每个渲染实例生成唯一 id，避免图表相互覆盖
   const id = useMemo(
     () => `mermaid-${Math.random().toString(36).slice(2)}`,
     []
@@ -30,7 +31,8 @@ export const MermaidBlock = ({ code }: { code: string }) => {
           containerRef.current.innerHTML = svg;
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[Mermaid] 渲染失败", err);
         if (containerRef.current) {
           containerRef.current.innerHTML =
             '<div class="text-xs text-[var(--color-fg-muted)]">Mermaid 渲染失败</div>';

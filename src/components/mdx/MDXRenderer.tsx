@@ -7,6 +7,7 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypePrettyCode from "rehype-pretty-code";
 
 import { mdxComponents } from "./components";
+import { remarkMermaid } from "./remark-mermaid";
 
 // Shiki 主题配置（与 Copilot Dark 对齐）
 const prettyCodeOptions = {
@@ -21,8 +22,10 @@ export const MDXRenderer = ({ source }: { source: string }) => {
       source={source}
       options={{
         mdxOptions: {
-          remarkPlugins: [remarkGfm, remarkMath],
+          // remark：处理 Markdown 语法扩展
+          remarkPlugins: [remarkGfm, remarkMath, remarkMermaid],
           rehypePlugins: [
+            // rehype：处理 HTML AST 与插件链
             rehypeSlug,
             rehypeAutolinkHeadings,
             [rehypePrettyCode, prettyCodeOptions],
