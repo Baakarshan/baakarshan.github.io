@@ -18,7 +18,9 @@ export const Breadcrumbs = ({
   segments: string[];
   labels?: string[];
 }) => {
+  // 语言前缀：中文站点统一带 /zh
   const base = locale === "zh" ? "/zh" : "";
+  // 首页文案与链接保持与语言一致
   const homeLabel = locale === "zh" ? "首页" : "Home";
   const homeHref = base ? `${base}/` : "/";
 
@@ -31,9 +33,11 @@ export const Breadcrumbs = ({
           </Link>
         </li>
         {segments.map((segment, index) => {
+          // 逐段拼接路径，确保每一层级都可点击回退
           const href = withTrailingSlash(
             `${base}/${segments.slice(0, index + 1).join("/")}`
           );
+          // 优先使用目录树/文章提供的显示名，缺失时回退到 slug
           const label = labels?.[index] ?? fallbackLabel(segment);
           return (
             <li key={`${segment}-${index}`} className="flex items-center gap-2">

@@ -15,6 +15,7 @@ import {
   getPostBySlug,
 } from "@/lib/posts";
 import { siteConfig } from "@/lib/site";
+import { parseYmdToLocalDate } from "@/lib/date";
 
 // 预先生成英文站 slug 集合，用于构建 alternates
 const enPostSlugSet = new Set(
@@ -44,6 +45,7 @@ export const generateStaticParams = async () => {
   [...postSlugs, ...folderSlugs].forEach((slug) => {
     map.set(slug.join("/"), slug);
   });
+  // Map 去重，避免同一路径重复输出
   return Array.from(map.values()).map((slug) => ({ slug }));
 };
 
@@ -202,7 +204,8 @@ export default async function ZhArticlePage({
           {post.allowCopy ? <CopyFullButton content={post.content} /> : null}
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-fg-muted)]">
-          <span>{format(new Date(post.date), "MMM dd, yyyy")}</span>
+          {/* 使用本地日期构造，避免 UTC 解析导致日期回退 */}
+          <span>{format(parseYmdToLocalDate(post.date), "MMM dd, yyyy")}</span>
         </div>
       </div>
 

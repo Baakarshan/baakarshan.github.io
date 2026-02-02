@@ -32,6 +32,7 @@ const renderNodes = (
               <Link
                 href={href}
                 className="text-xs font-semibold text-[var(--color-fg-default)] hover:text-[var(--color-accent-fg)]"
+                // 用 paddingLeft 体现层级缩进，避免嵌套过深的额外 DOM
                 style={{ paddingLeft: depth * 12 }}
               >
                 {node.displayName}
@@ -44,6 +45,7 @@ const renderNodes = (
           );
         }
 
+        // 文件节点：仅显示标题，不展示子级
         return (
           <li key={`${node.slug.join("/")}-${depth}`}>
             <Link

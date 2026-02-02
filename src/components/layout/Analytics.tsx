@@ -10,7 +10,9 @@ export const Analytics = () => {
   return (
     <Script
       src="https://static.cloudflareinsights.com/beacon.min.js"
+      // token 通过 data-cf-beacon 传入，避免硬编码到脚本 URL
       data-cf-beacon={`{"token":"${token}"}`}
+      // defer 确保不阻塞首屏渲染
       defer
     />
   );
