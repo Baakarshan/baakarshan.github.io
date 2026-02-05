@@ -11,16 +11,21 @@ export const ZoomImage = ({ src, alt = "", ...props }: any) => {
 
   return (
     <>
-      <img
-        src={src}
-        alt={alt}
-        {...props}
+      <div
+        className={`image-block ${props.className ?? ""}`}
         onClick={() => setOpen(true)}
-        // 提示可单击放大
-        className={`my-4 cursor-zoom-in rounded-md border border-[var(--color-border-default)] ${
-          props.className ?? ""
-        }`}
-      />
+        role="button"
+        tabIndex={0}
+        aria-label={alt ? `查看图片：${alt}` : "查看图片"}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+      >
+        <img src={src} alt={alt} {...props} draggable={false} />
+      </div>
       <MediaLightbox
         open={open}
         onClose={() => setOpen(false)}

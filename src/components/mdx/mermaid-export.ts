@@ -35,7 +35,10 @@ const ensureResvgReady = () => {
   });
 };
 
-const FONT_URLS = ["/fonts/NotoSansSC-Regular.ttf"];
+const FONT_URLS = [
+  "/fonts/NotoSansSC-Regular.ttf",
+  "/fonts/NotoEmoji-Regular.ttf",
+];
 let fontBuffersPromise: Promise<Uint8Array[]> | null = null;
 
 const loadFontBuffers = async () => {
@@ -100,6 +103,40 @@ const ensureSvgNamespace = (svg: string) => {
   return svg.replace(/^<svg\b[^>]*>/i, updated);
 };
 
+const inlineSvgStyles = (svgEl: SVGElement) => {
+  const elements = svgEl.querySelectorAll(
+    "path, line, polyline, polygon, rect, circle, ellipse, text, tspan"
+  );
+  elements.forEach((element) => {
+    const style = getComputedStyle(element);
+    const setAttr = (name: string, value: string) => {
+      if (!value) return;
+      if (name === "stroke-dasharray" && (value === "none" || value === "0px")) {
+        return;
+      }
+      element.setAttribute(name, value);
+    };
+
+    setAttr("stroke", style.stroke);
+    setAttr("stroke-width", style.strokeWidth);
+    setAttr("stroke-dasharray", style.strokeDasharray);
+    setAttr("stroke-dashoffset", style.strokeDashoffset);
+    setAttr("stroke-linecap", style.strokeLinecap);
+    setAttr("stroke-linejoin", style.strokeLinejoin);
+    setAttr("stroke-miterlimit", style.strokeMiterlimit);
+    setAttr("fill", style.fill);
+    setAttr("opacity", style.opacity);
+
+    const tag = element.tagName.toLowerCase();
+    if (tag === "text" || tag === "tspan") {
+      setAttr("font-family", style.fontFamily);
+      setAttr("font-size", style.fontSize);
+      setAttr("font-weight", style.fontWeight);
+      setAttr("font-style", style.fontStyle);
+    }
+  });
+};
+
 const cropSvgToBBox = (svg: string) => {
   if (typeof document === "undefined") return svg;
   const withNamespace = ensureSvgNamespace(svg);
@@ -122,6 +159,7 @@ const cropSvgToBBox = (svg: string) => {
   }
 
   try {
+    inlineSvgStyles(svgEl);
     const bbox = svgEl.getBBox();
     if (!Number.isFinite(bbox.width) || !Number.isFinite(bbox.height)) {
       return withNamespace;
