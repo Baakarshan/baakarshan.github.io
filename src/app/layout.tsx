@@ -16,7 +16,20 @@ export const metadata: Metadata = {
     template: `%s · ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  metadataBase: new URL(siteConfig.siteUrl),
+  metadataBase:
+    process.env.NODE_ENV === "production"
+      ? new URL(siteConfig.siteUrl)
+      : new URL("http://localhost:3000"),
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   openGraph: {
     title: siteConfig.name,
     description: siteConfig.description,

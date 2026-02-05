@@ -25,12 +25,10 @@ export const Breadcrumbs = ({
   const homeHref = base ? `${base}/` : "/";
 
   return (
-    <nav className="text-xs text-[var(--color-fg-muted)]" aria-label="Breadcrumb">
-      <ol className="flex flex-wrap items-center gap-2">
+    <nav className="meta" aria-label="Breadcrumb">
+      <ol className="breadcrumbs">
         <li>
-          <Link href={homeHref} className="hover:text-[var(--color-fg-default)]">
-            {homeLabel}
-          </Link>
+          <Link href={homeHref}>{homeLabel}</Link>
         </li>
         {segments.map((segment, index) => {
           // 逐段拼接路径，确保每一层级都可点击回退
@@ -40,14 +38,9 @@ export const Breadcrumbs = ({
           // 优先使用目录树/文章提供的显示名，缺失时回退到 slug
           const label = labels?.[index] ?? fallbackLabel(segment);
           return (
-            <li key={`${segment}-${index}`} className="flex items-center gap-2">
+            <li key={`${segment}-${index}`}>
               <span>/</span>
-              <Link
-                href={href}
-                className="hover:text-[var(--color-fg-default)]"
-              >
-                {label}
-              </Link>
+              <Link href={href}>{label}</Link>
             </li>
           );
         })}

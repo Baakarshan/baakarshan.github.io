@@ -27,7 +27,7 @@ export const RecentPosts = ({
         <Link
           key={post.slug.join("/")}
           href={withTrailingSlash(`${base}/${post.slug.join("/")}`)}
-          className="block rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] px-4 py-3 text-sm text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
+          className="block rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] px-3.5 py-2.5 text-sm text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
         >
           <div className="flex items-center justify-between gap-4">
             <span>{post.title}</span>

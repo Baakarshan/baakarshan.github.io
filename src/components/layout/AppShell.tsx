@@ -10,11 +10,15 @@ export const AppShell = ({ children }: { children: React.ReactNode }) => {
   const treeZh = getContentTree("zh");
 
   return (
-    <div className="app-shell">
+    <div className="app">
       {/* 侧边栏统一接收双语树，内部按路径选择 */}
       <Sidebar trees={{ en: treeEn, zh: treeZh }} />
-      {/* 主内容区：由路由页面注入 */}
-      <main className="app-main">{children}</main>
+      <div className="main">
+        {/* 主内容区：由路由页面注入 */}
+        <main className="content">
+          <div className="content-inner">{children}</div>
+        </main>
+      </div>
     </div>
   );
 };

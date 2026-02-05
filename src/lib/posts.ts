@@ -88,6 +88,10 @@ type DirectoryIndexInfo = {
 // 1) priority 数字越小越靠前（未填写视为 Infinity）
 // 2) priority 相同或缺失时，按展示名字母序排序
 // 3) 兜底使用 slug 保证排序稳定（避免同名导致排序抖动）
+//
+// 设计说明：
+// - displayName 可能来自目录页 title 或文件名，因此排序基于“展示文本”
+// - localeCompare 使用中文/英文区域配置，保证中英文排序语义一致且稳定
 const compareNodes = (a: ContentTreeNode, b: ContentTreeNode, locale: Locale) => {
   const aPriority = a.priority ?? Number.POSITIVE_INFINITY;
   const bPriority = b.priority ?? Number.POSITIVE_INFINITY;
@@ -135,6 +139,10 @@ const readPostFile = (filePath: string) => {
 // 构建“目录同名 MDX”索引表：
 // - key 为目录路径（相对 localeRoot，使用 / 连接）
 // - value 包含 slug 覆盖、标题与 priority
+//
+// 用途说明：
+// - 目录页（同名 MDX）可作为目录节点的显示名与排序来源
+// - 目录级 slug 覆盖会影响其下所有子路径
 const buildDirectoryIndexMap = (localeRoot: string) => {
   const map = new Map<string, DirectoryIndexInfo>();
   const files = getAllMdxFiles(localeRoot);
@@ -167,6 +175,10 @@ const buildDirectoryIndexMap = (localeRoot: string) => {
 // 生成文章 slug：支持目录级 slug 覆盖
 // - 目录同名 MDX：使用目录 slug（可被 frontmatter 覆盖）
 // - 普通文章：目录段先应用覆盖，再处理自身 slug 覆盖
+//
+// 关键点：
+// - slug 仅去扩展名，不剥离数字前缀
+// - 目录级覆盖优先于文章级覆盖（保证路径层级一致）
 const buildSlugSegmentsFromPath = (
   filePath: string,
   localeRoot: string,
@@ -181,6 +193,7 @@ const buildSlugSegmentsFromPath = (
   const resolvedSegments: string[] = [];
   const dirKeySegments: string[] = [];
 
+  // 逐级拼接目录段，应用目录级 slug 覆盖
   dirSegments.forEach((segment) => {
     dirKeySegments.push(segment);
     const key = dirKeySegments.join("/");
@@ -188,6 +201,7 @@ const buildSlugSegmentsFromPath = (
     resolvedSegments.push(override ?? segment);
   });
 
+  // 目录同名 MDX：不再追加文件段，直接复用目录 slug
   const isIndex =
     dirSegments.length > 0 &&
     fileSegment === dirSegments[dirSegments.length - 1];
@@ -200,15 +214,8 @@ const buildSlugSegmentsFromPath = (
   return resolvedSegments;
 };
 
-// 将文件路径转换为 slug 段数组（保留目录层级）
-// - 路径分隔符根据平台自动处理
-// - slug 段仅去扩展名，不剥离数字前缀
-const toSlugSegmentsFromPath = (filePath: string, localeRoot: string) => {
-  const relative = path.relative(localeRoot, filePath);
-  return relative.split(path.sep).map(toSlugSegment);
-};
-
 // 提取标题文本（用于生成目录 TOC）
+// - 递归处理 MDX AST 节点，兼容嵌套与行内代码
 const extractHeadingText = (node: any): string => {
   if (!node) return "";
   if (node.type === "text" || node.type === "inlineCode") {
@@ -222,6 +229,7 @@ const extractHeadingText = (node: any): string => {
 
 // 解析 Markdown/MDX，提取 h1~h3 作为目录
 // - 目录深度限制为 3 层，避免 TOC 过长
+// - 使用 github-slugger 保证重复标题时生成稳定锚点
 const extractToc = (content: string): TocItem[] => {
   const tree = unified().use(remarkParse).use(remarkMdx).parse(content);
   const slugger = new GithubSlugger();
@@ -256,6 +264,9 @@ const getPostSlugSegments = (
 // - 遍历所有 mdx 文件（构建期可接受）
 // - 忽略 draft
 // - 同时考虑 frontmatter slug 覆盖规则
+//
+// 性能说明：
+// - 该函数仅在构建/服务端调用，避免在客户端执行
 const resolveSlugToFile = (localeRoot: string, slugSegments: string[]) => {
   const target = slugSegments.join("/");
   const files = getAllMdxFiles(localeRoot);
@@ -282,6 +293,8 @@ const resolveSlugToFile = (localeRoot: string, slugSegments: string[]) => {
 // - 自动过滤 draft
 // - 统一日期格式
 // - 结果按日期倒序排列
+//
+// 注意：allowCopy 默认为 false，仅当 frontmatter 为 true 时启用
 export const getAllPosts = (locale: Locale): PostMeta[] => {
   const localeRoot = getLocaleRoot(locale);
   const files = getAllMdxFiles(localeRoot);
@@ -346,6 +359,10 @@ export const getPostBySlug = (locale: Locale, slugSegments: string[]): PostData 
 // - 文件夹节点 priority 来源于目录页 frontmatter（若无则 Infinity）
 // - 文件节点 priority 来源于自身 frontmatter
 // - 文件夹与文件使用同一排序规则（priority + 字母序）
+//
+// 结构约定：
+// - 目录节点 displayName 可来自目录页 title；否则回退目录名
+// - 目录同名 MDX 仅作为目录页入口，不在文件列表重复展示
 const buildTree = (
   currentDir: string,
   parentDirSegments: string[],
@@ -364,7 +381,8 @@ const buildTree = (
     const fullPath = path.join(currentDir, entry.name);
 
     if (entry.isDirectory()) {
-      // 目录节点：目录名为默认显示名，可被目录页 title 覆盖
+      // 目录节点：默认使用目录名；若存在目录页 title 则覆盖显示名
+      // - 目录级 slug 覆盖影响该目录及其子路径
       const nextDirSegments = [...parentDirSegments, entry.name];
       const dirKey = nextDirSegments.join("/");
       const indexInfo = dirIndexMap.get(dirKey);
@@ -380,6 +398,7 @@ const buildTree = (
         localeRoot,
         dirIndexMap
       );
+      // 目录存在同名 MDX 时视为“目录页”
       const hasIndexPage = Boolean(indexInfo);
       // 目录没有子内容且没有目录页时，才从树中剔除
       if (children.length === 0 && !hasIndexPage) {
@@ -406,6 +425,7 @@ const buildTree = (
         typeof data.title === "string" ? data.title.trim() : "";
       const displayName = title || toDisplayName(entry.name);
       const fileSegment = toSlugSegment(entry.name);
+      // 目录同名文章用于目录页展示，避免在列表中重复出现
       const isIndex =
         parentDirSegments.length > 0 &&
         fileSegment === parentDirSegments[parentDirSegments.length - 1];
@@ -434,6 +454,7 @@ const buildTree = (
 };
 
 // 对外提供的目录树入口
+// - Sidebar / Directory 页面统一依赖该树，确保一致性
 export const getContentTree = (locale: Locale) => {
   const localeRoot = getLocaleRoot(locale);
   const dirIndexMap = buildDirectoryIndexMap(localeRoot);
@@ -441,6 +462,7 @@ export const getContentTree = (locale: Locale) => {
 };
 
 // 收集所有目录 slug（用于生成目录页静态路由）
+// - 包含所有可达目录节点
 export const getAllFolderSlugs = (locale: Locale) => {
   const tree = getContentTree(locale);
   const folders: string[][] = [];
@@ -461,6 +483,7 @@ export const getAllFolderSlugs = (locale: Locale) => {
 };
 
 // 根据 slug 找到树中的节点（文件或目录）
+// - 返回 null 表示该路径不存在或不可达
 export const getNodeBySlug = (
   locale: Locale,
   slugSegments: string[]
@@ -482,6 +505,7 @@ export const getNodeBySlug = (
 
 // 生成面包屑显示名称列表（与目录树 displayName 对齐）
 // - 若节点未找到，回退为解码后的 slug 段
+// - 仅影响展示文本，不改变路由
 export const getBreadcrumbLabels = (
   locale: Locale,
   slugSegments: string[]
@@ -508,6 +532,7 @@ export const getBreadcrumbLabels = (
 };
 
 // 仅当 slug 对应目录节点时返回
+// - 用于目录页渲染与 metadata 生成
 export const getFolderNodeBySlug = (locale: Locale, slugSegments: string[]) => {
   const node = getNodeBySlug(locale, slugSegments);
   if (node && node.type === "folder") {

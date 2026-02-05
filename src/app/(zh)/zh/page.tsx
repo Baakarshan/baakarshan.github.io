@@ -26,8 +26,8 @@ export default function ZhHome() {
   const latest = posts[0];
 
   return (
-    <div className="mx-auto max-w-[820px] space-y-10">
-      <section className="rounded-lg border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-6">
+    <div className="mx-auto max-w-[820px] space-y-8">
+      <section className="rounded-lg border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-5">
         {/* 关于我：模拟 System Prompt */}
         <div className="text-xs text-[var(--color-fg-muted)]">&gt; System: 关于我</div>
         <p className="mt-3 text-sm leading-6 text-[var(--color-fg-default)]">
@@ -35,26 +35,26 @@ export default function ZhHome() {
         </p>
       </section>
 
-      <section className="rounded-lg border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-6">
+      <section className="rounded-lg border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-5">
         {/* 快捷入口：模拟 Copilot 推荐卡片 */}
         <div className="text-xs text-[var(--color-fg-muted)]">&gt; 快捷入口</div>
         <div className="mt-4 flex flex-wrap gap-3 text-xs">
           <Link
             href="/zh/directory/"
-            className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-canvas-default)] px-4 py-2 text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
+            className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-canvas-default)] px-3.5 py-1.5 text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
           >
             &gt; 浏览目录
           </Link>
           <Link
             href="/zh/search/"
-            className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-canvas-default)] px-4 py-2 text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
+            className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-canvas-default)] px-3.5 py-1.5 text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
           >
             &gt; 搜索笔记
           </Link>
           {latest ? (
             <Link
               href={`/zh/${latest.slug.join("/")}/`}
-              className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-canvas-default)] px-4 py-2 text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
+              className="rounded-full border border-[var(--color-border-default)] bg-[var(--color-canvas-default)] px-3.5 py-1.5 text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
             >
               &gt; 最新文章
             </Link>

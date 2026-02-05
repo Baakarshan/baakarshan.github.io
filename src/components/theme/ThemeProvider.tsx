@@ -16,12 +16,14 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 const THEME_KEY = "theme-preference";
 
 // 获取系统主题偏好（在非浏览器环境下回退为 dark）
+// - 该回退仅用于 SSR/构建期，避免直接访问 window 报错
 const getSystemTheme = (): ResolvedTheme => {
   if (typeof window === "undefined") return "dark";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
 
 // 安全读取本地存储的主题模式，失败则回退 system
+// - 只允许 "light" / "dark" 两种持久化值
 const readStoredMode = (): ThemeMode => {
   if (typeof window === "undefined") return "system";
   try {
@@ -33,6 +35,7 @@ const readStoredMode = (): ThemeMode => {
 };
 
 // 应用主题到 html 根节点
+// - 同时设置 class 与 data-theme，便于 CSS 与第三方组件同步
 const applyTheme = (theme: ResolvedTheme) => {
   const root = document.documentElement;
   root.classList.remove("theme-dark", "theme-light");
@@ -41,6 +44,7 @@ const applyTheme = (theme: ResolvedTheme) => {
 };
 
 // 主题 Provider：支持 system/手动切换，并持久化到 localStorage
+// - 初始化阶段尽量与 ThemeInitScript 保持一致，减少闪烁
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   // 初始状态尽量与首屏脚本一致，减少主题闪烁与水合差异
   const [mode, setMode] = useState<ThemeMode>(() => readStoredMode());
@@ -50,6 +54,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   });
 
   // 主题变化：写入本地或跟随系统
+  // - system 模式需要监听系统主题变化并实时更新
   useEffect(() => {
     if (mode !== "system") {
       // 手动模式：持久化并直接应用
@@ -60,6 +65,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // system 模式：移除本地偏好并监听系统主题变化
+    // - 监听器只在客户端存在，避免 SSR 不一致
     localStorage.removeItem(THEME_KEY);
     const update = () => {
       const system = getSystemTheme();

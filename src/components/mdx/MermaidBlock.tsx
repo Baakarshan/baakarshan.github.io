@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import mermaid from "mermaid";
 
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { renderMermaidSvg } from "./mermaid-runtime";
 
 // Mermaid 渲染组件：根据主题切换 dark/light
 export const MermaidBlock = ({ code }: { code: string }) => {
@@ -17,31 +17,31 @@ export const MermaidBlock = ({ code }: { code: string }) => {
 
   useEffect(() => {
     if (!containerRef.current) return;
+    let cancelled = false;
+    const theme = resolvedTheme === "dark" ? "dark" : "light";
 
-    // 每次渲染都显式初始化，确保主题切换后正确应用
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: resolvedTheme === "dark" ? "dark" : "default",
-    });
-
-    mermaid
-      .render(id, code)
-      .then(({ svg }) => {
-        if (containerRef.current) {
-          containerRef.current.innerHTML = svg;
-        }
-      })
-      .catch((err) => {
+    const render = async () => {
+      try {
+        const { svg } = await renderMermaidSvg({ id, code, theme });
+        if (!containerRef.current || cancelled) return;
+        containerRef.current.innerHTML = svg;
+      } catch (err) {
         console.error("[Mermaid] 渲染失败", err);
-        if (containerRef.current) {
+        if (containerRef.current && !cancelled) {
           containerRef.current.innerHTML =
             '<div class="text-xs text-[var(--color-fg-muted)]">Mermaid 渲染失败</div>';
         }
-      });
+      }
+    };
+
+    render();
+    return () => {
+      cancelled = true;
+    };
   }, [code, id, resolvedTheme]);
 
   return (
-    <div className="my-4 rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-3">
+    <div className="mermaid-block">
       <div ref={containerRef} />
     </div>
   );

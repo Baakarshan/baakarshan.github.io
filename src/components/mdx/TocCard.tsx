@@ -1,31 +1,84 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { TocItem } from "@/lib/posts";
 
 // 文内目录卡片：支持折叠/展开
 export const TocCard = ({ items }: { items: TocItem[] }) => {
+  const TOC_ENABLED_KEY = "toc-enabled";
+  const TOC_EVENT_NAME = "toc-enabled-change";
+  const [enabled, setEnabled] = useState(false);
   const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    const readEnabled = () => {
+      try {
+        return localStorage.getItem(TOC_ENABLED_KEY) === "true";
+      } catch {
+        return false;
+      }
+    };
+    setEnabled(readEnabled());
+
+    const handleCustom = () => {
+      setEnabled(readEnabled());
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== TOC_ENABLED_KEY) return;
+      setEnabled(event.newValue === "true");
+    };
+
+    window.addEventListener(TOC_EVENT_NAME, handleCustom as EventListener);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener(TOC_EVENT_NAME, handleCustom as EventListener);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
 
   // 无目录时不渲染，避免占位
   if (items.length === 0) return null;
 
+  if (!enabled) return null;
+
   return (
-    <section className="my-6 rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)]">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between px-4 py-2 text-sm font-semibold text-[var(--color-fg-default)]"
-      >
+    <section className="toc">
+      <div className="toc-header">
         <span>目录</span>
-        <span className="text-xs text-[var(--color-fg-muted)]">
-          {open ? "收起" : "展开"}
-        </span>
-      </button>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="toc-toggle"
+          aria-label={open ? "收起目录" : "展开目录"}
+          title={open ? "收起目录" : "展开目录"}
+        >
+          {open ? (
+            <svg aria-hidden="true" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M4 10l4-4 4 4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : (
+            <svg aria-hidden="true" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M4 6l4 4 4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </button>
+      </div>
       {open ? (
-        <div className="border-t border-[var(--color-border-default)] px-4 py-3">
-          <ul className="space-y-2 text-xs text-[var(--color-fg-muted)]">
+        <div className="toc-body">
+          <ul>
             {items.map((item) => (
               <li
                 key={item.slug}
@@ -34,7 +87,6 @@ export const TocCard = ({ items }: { items: TocItem[] }) => {
                 {/* 深度限制在 3 层，避免目录过长影响阅读 */}
                 <a
                   href={`#${item.slug}`}
-                  className="hover:text-[var(--color-fg-default)]"
                 >
                   {item.value}
                 </a>

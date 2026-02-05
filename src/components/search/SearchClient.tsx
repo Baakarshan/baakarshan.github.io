@@ -15,11 +15,13 @@ type SearchItem = {
 
 // 转义正则特殊字符，避免高亮时异常
 // - 用户输入可能包含 * ? 等字符，需转义后再拼正则
+// - 仅处理前端展示，避免引入复杂分词与高亮库
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // 简易高亮：把查询词用 <mark> 包裹
 // - 仅做直观展示，不做复杂分词
+// - 对大小写不敏感，保持与 Fuse 的模糊匹配体验一致
 const highlight = (text: string, query: string) => {
   if (!query) return text;
   const safe = escapeRegExp(query);
@@ -48,6 +50,7 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
   // 加载对应语言的搜索索引
   // - 优先读取 manifest（支持分片）
   // - manifest 失败时回退单文件索引
+  // - 全部在客户端完成，满足“零动态”约束
   useEffect(() => {
     let cancelled = false;
     const localeKey = locale === "zh" ? "zh" : "en";
@@ -55,6 +58,7 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
     const fallbackUrl = `/search-index-${localeKey}.json`;
 
     // 统一的 fetch 入口，失败时抛错给上层处理
+    // - 便于在不同索引结构间复用加载逻辑
     const loadFromUrl = async (url: string) => {
       const res = await fetch(url);
       if (!res.ok) throw new Error("search-index fetch failed");
@@ -71,6 +75,7 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
           return;
         }
         // 分片索引（大体积）
+        // - 并行加载所有分片，再合并为完整列表
         if (manifest?.type === "sharded" && Array.isArray(manifest.shards)) {
           const files = manifest.shards
             .map((shard: { file?: string }) => shard.file)
@@ -87,6 +92,7 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
       }
 
       // 回退策略：直接读取 search-index-xx.json（兼容旧构建产物）
+      // - 保证历史产物或构建失败时仍可搜索
       try {
         const data = await loadFromUrl(fallbackUrl);
         if (!cancelled) setItems(Array.isArray(data) ? data : []);
@@ -103,6 +109,7 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
 
   // 读取 URL 查询参数，支持直接带入搜索词
   // - URL 变化时同步输入框
+  // - 便于分享带搜索词的链接
   useEffect(() => {
     const q = searchParams.get("q") ?? "";
     // 无论是否为空都同步，避免 URL 清空后输入框残留旧值
@@ -111,6 +118,7 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
 
   // Fuse.js 初始化：标题权重最高
   // - threshold 越低越严格，避免噪音结果
+  // - includeScore 便于未来做排序/调试
   const fuse = useMemo(
     () =>
       new Fuse(items, {
@@ -126,6 +134,7 @@ export const SearchClient = ({ locale }: { locale: Locale }) => {
   );
 
   // 结果计算：无查询词时不显示任何结果
+  // - 避免初始页展示全量索引带来噪音
   const results = useMemo(() => {
     if (!query.trim()) return [];
     return fuse.search(query).map((result) => result.item);

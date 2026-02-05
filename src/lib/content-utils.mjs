@@ -15,18 +15,6 @@ export const getFrontmatterSlugSegment = (data) => {
   return raw;
 };
 
-// 目录页规则：目录内同名 MDX 作为目录页 => slug 末段与父段相同则去重
-export const normalizeSlugSegments = (segments) => {
-  if (segments.length >= 2) {
-    const last = segments[segments.length - 1];
-    const prev = segments[segments.length - 2];
-    if (last === prev) {
-      return segments.slice(0, -1);
-    }
-  }
-  return segments;
-};
-
 // 统一日期格式（YYYY-MM-DD）
 export const normalizeDate = (value) => {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {

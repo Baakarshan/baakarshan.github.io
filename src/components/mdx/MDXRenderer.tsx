@@ -9,10 +9,16 @@ import rehypePrettyCode from "rehype-pretty-code";
 import { mdxComponents } from "./components";
 import { remarkMermaid } from "./remark-mermaid";
 
-// Shiki 主题配置（与 Copilot Dark 对齐）
+// Shiki 主题配置（与 Copilot 风格对齐）
+// - 深色使用 github-dark-dimmed
+// - 浅色使用 github-light
+// - 关闭背景，让 CSS 统一控制代码块底色
 const prettyCodeOptions = {
-  theme: "github-dark-dimmed",
-  keepBackground: true,
+  theme: {
+    dark: "github-dark-dimmed",
+    light: "github-light",
+  },
+  keepBackground: false,
 };
 
 // 统一 MDX 渲染入口：Markdown + GFM + KaTeX + 代码高亮

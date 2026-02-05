@@ -58,13 +58,5 @@ export const mdxComponents = {
   Mermaid: ({ code }: { code?: string }) => (
     <MermaidBlock code={typeof code === "string" ? code : ""} />
   ),
-  // 行内代码：轻量背景强调
-  code: (props: any) => (
-    <code
-      {...props}
-      className={`rounded bg-[var(--color-canvas-subtle)] px-1 py-0.5 text-[12px] ${
-        props.className ?? ""
-      }`}
-    />
-  ),
+  // 行内 code 样式改由全局 CSS 处理，避免影响代码块的水合一致性
 };

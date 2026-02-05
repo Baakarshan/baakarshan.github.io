@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Resvg, initWasm } from "@resvg/resvg-wasm";
-import mermaid from "mermaid";
 import { unified } from "unified";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -15,6 +14,7 @@ import rehypeStringify from "rehype-stringify";
 import { visit } from "unist-util-visit";
 
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { renderMermaidSvg } from "./mermaid-runtime";
 
 type MermaidBlock = {
   start: number;
@@ -114,6 +114,8 @@ const collectMermaidBlocks = (content: string) => {
   return blocks.sort((a, b) => a.start - b.start);
 };
 
+const CROP_PADDING = 8;
+
 // 解析 Mermaid 输出的 SVG 尺寸
 // - 优先 width/height，其次 viewBox
 // - 兜底给一个可用尺寸，避免零尺寸渲染
@@ -151,6 +153,55 @@ const ensureSvgNamespace = (svg: string) => {
   return svg.replace(/^<svg\b[^>]*>/i, updated);
 };
 
+const cropSvgToBBox = (svg: string) => {
+  if (typeof document === "undefined") return svg;
+  const withNamespace = ensureSvgNamespace(svg);
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "fixed";
+  wrapper.style.left = "-99999px";
+  wrapper.style.top = "-99999px";
+  wrapper.style.width = "0";
+  wrapper.style.height = "0";
+  wrapper.style.overflow = "hidden";
+  wrapper.style.visibility = "hidden";
+  wrapper.style.pointerEvents = "none";
+  wrapper.innerHTML = withNamespace;
+
+  document.body.appendChild(wrapper);
+  const svgEl = wrapper.querySelector("svg");
+  if (!svgEl) {
+    wrapper.remove();
+    return withNamespace;
+  }
+
+  try {
+    const bbox = svgEl.getBBox();
+    if (!Number.isFinite(bbox.width) || !Number.isFinite(bbox.height)) {
+      return withNamespace;
+    }
+    if (bbox.width === 0 || bbox.height === 0) {
+      return withNamespace;
+    }
+
+    const pad = CROP_PADDING;
+    const x = bbox.x - pad;
+    const y = bbox.y - pad;
+    const width = bbox.width + pad * 2;
+    const height = bbox.height + pad * 2;
+
+    svgEl.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
+    svgEl.setAttribute("width", String(width));
+    svgEl.setAttribute("height", String(height));
+
+    const serializer = new XMLSerializer();
+    return serializer.serializeToString(svgEl);
+  } catch {
+    return withNamespace;
+  } finally {
+    wrapper.remove();
+  }
+};
+
 // 标准化 SVG：补齐命名空间 + 固定宽高
 // - Resvg 需要明确的尺寸来稳定输出
 const normalizeSvg = (svg: string) => {
@@ -178,7 +229,8 @@ const svgToPngDataUrl = async (
   svg: string,
   background: string | null
 ): Promise<MermaidImage> => {
-  const normalized = normalizeSvg(svg);
+  const cropped = cropSvgToBBox(svg);
+  const normalized = normalizeSvg(cropped);
   const size = getSvgSize(normalized);
   const displayWidth = Math.max(size.width, MIN_PNG_WIDTH);
   const displayHeight = Math.round((displayWidth * size.height) / size.width);
@@ -219,16 +271,8 @@ const renderMermaidPng = async (
   theme: "light" | "dark",
   index: number
 ) => {
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: theme === "dark" ? "dark" : "default",
-    fontFamily: "Noto Sans SC, sans-serif",
-    flowchart: { htmlLabels: false },
-    sequence: { htmlLabels: false },
-    classDiagram: { htmlLabels: false },
-  });
   const id = `mermaid-copy-${index}-${Math.random().toString(36).slice(2)}`;
-  const { svg } = await mermaid.render(id, code);
+  const { svg } = await renderMermaidSvg({ id, code, theme });
   const background = theme === "dark" ? "#0d1117" : "#ffffff";
   return svgToPngDataUrl(svg, background);
 };
@@ -332,11 +376,11 @@ export const CopyFullButton = ({ content }: { content: string }) => {
   const { resolvedTheme } = useTheme();
   const [status, setStatus] = useState<CopyStatus>("idle");
 
-  const hintText = useMemo(() => {
-    if (status === "copying") return "处理中...";
-    if (status === "success") return "已复制";
+  const buttonText = useMemo(() => {
+    if (status === "copying") return "复制中...";
+    if (status === "success") return "复制成功";
     if (status === "error") return "复制失败";
-    return "";
+    return "复制全文";
   }, [status]);
 
   const handleCopy = async () => {
@@ -358,20 +402,15 @@ export const CopyFullButton = ({ content }: { content: string }) => {
   };
 
   return (
-    <div className="flex items-center gap-2 shrink-0">
-      <button
-        type="button"
-        onClick={handleCopy}
-        disabled={status === "copying"}
-        className="inline-flex items-center justify-center rounded-md border border-[var(--color-border-default)] px-3 py-1 text-xs text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        复制全文
-      </button>
-      {hintText ? (
-        <span className="text-xs text-[var(--color-fg-muted)]">
-          {hintText}
-        </span>
-      ) : null}
-    </div>
+    <button
+      type="button"
+      onClick={handleCopy}
+      disabled={status === "copying"}
+      className="copy-button"
+      aria-label="复制全文"
+      title={buttonText}
+    >
+      {buttonText}
+    </button>
   );
 };

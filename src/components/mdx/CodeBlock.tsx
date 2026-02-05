@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Check, Copy } from "lucide-react";
 
 import { MermaidBlock } from "./MermaidBlock";
 
@@ -73,6 +72,64 @@ export const CodeBlock = (props: React.HTMLAttributes<HTMLPreElement>) => {
   );
 
   const [copied, setCopied] = useState(false);
+  const [wrapped, setWrapped] = useState(false);
+
+  const languageColor = useMemo(() => {
+    const key = (language ?? "").toLowerCase();
+    const colorMap: Record<string, string> = {
+      kotlin: "#a97bff",
+      kts: "#a97bff",
+      java: "#f89820",
+      javascript: "#f7df1e",
+      js: "#f7df1e",
+      typescript: "#3178c6",
+      ts: "#3178c6",
+      python: "#3776ab",
+      py: "#3776ab",
+      go: "#00add8",
+      golang: "#00add8",
+      rust: "#ce412b",
+      rs: "#ce412b",
+      c: "#a8b9cc",
+      cpp: "#00599c",
+      "c++": "#00599c",
+      cxx: "#00599c",
+      hpp: "#00599c",
+      cs: "#9b4f96",
+      csharp: "#9b4f96",
+      swift: "#f05138",
+      html: "#e34f26",
+      css: "#1572b6",
+      scss: "#1572b6",
+      less: "#1572b6",
+      sql: "#336791",
+      shell: "#89e051",
+      bash: "#89e051",
+      sh: "#89e051",
+      zsh: "#89e051",
+      json: "#6b7280",
+      yaml: "#cb171e",
+      yml: "#cb171e",
+      markdown: "#8b949e",
+      md: "#8b949e",
+      mermaid: "#00bfa5",
+    };
+    return colorMap[key] ?? "";
+  }, [language]);
+
+  const displayLanguage = useMemo(() => {
+    if (!language) return "Code";
+    return language
+      .replace(/_/g, "-")
+      .split(/[-\s]+/)
+      .filter(Boolean)
+      .map((segment) =>
+        segment.length === 0
+          ? segment
+          : segment[0].toUpperCase() + segment.slice(1)
+      )
+      .join(" ");
+  }, [language]);
 
   // Mermaid 代码块交给专用渲染组件（使用 SVG 渲染）
   if (language === "mermaid") {
@@ -92,24 +149,60 @@ export const CodeBlock = (props: React.HTMLAttributes<HTMLPreElement>) => {
   };
 
   return (
-    <div className="my-4 overflow-hidden rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)]">
-      <div className="flex items-center justify-between border-b border-[var(--color-border-default)] px-3 py-2 text-xs text-[var(--color-fg-muted)]">
-        <span className="uppercase tracking-wider">
-          {language ? language : "code"}
-        </span>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="inline-flex items-center gap-1 rounded-md border border-[var(--color-border-default)] px-2 py-1 text-[10px] text-[var(--color-fg-default)] hover:bg-[var(--color-item-hover)]"
-        >
-          {copied ? <Check size={12} /> : <Copy size={12} />}
-          {copied ? "Copied" : "Copy"}
-        </button>
+    <div className={`code-block${wrapped ? " is-wrapped" : ""}`}>
+      <div className="code-head">
+        <div className="code-lang">
+          <span
+            className="lang-dot"
+            style={languageColor ? { backgroundColor: languageColor } : undefined}
+          />
+          <span className="lang-name">{displayLanguage}</span>
+        </div>
+        <div className="code-actions">
+          <button
+            type="button"
+            onClick={() => setWrapped((prev) => !prev)}
+            aria-pressed={wrapped}
+            aria-label={wrapped ? "取消换行" : "自动换行"}
+            title={wrapped ? "取消换行" : "自动换行"}
+            className={`icon-button wrap-toggle${wrapped ? " is-active" : ""}`}
+          >
+            <svg aria-hidden="true" viewBox="0 0 16 16" fill="none">
+              <path
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.5"
+                d="M1 13h3M1 3h14"
+              ></path>
+              <path
+                fill="currentColor"
+                fillRule="evenodd"
+                d="M1 7.25a.75.75 0 0 0 0 1.5h11.5a1.75 1.75 0 1 1 0 3.5H9.536v-.464a.679.679 0 0 0-1.086-.543l-1.619 1.214a.68.68 0 0 0 0 1.086l1.619 1.214a.679.679 0 0 0 1.086-.543v-.464H12.5a3.25 3.25 0 0 0 0-6.5z"
+                clipRule="evenodd"
+              ></path>
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label="复制代码"
+            title={copied ? "已复制" : "复制代码"}
+            className={`icon-button copy-code${copied ? " copied" : ""}`}
+          >
+            <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path>
+              <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+            </svg>
+          </button>
+        </div>
       </div>
-      <pre
-        {...props}
-        className={`overflow-x-auto px-3 py-3 text-[13px] leading-[1.6] ${props.className ?? ""}`}
-      />
+      <div className="code-body">
+        <pre
+          {...props}
+          className={`${props.className ?? ""}`}
+        />
+      </div>
     </div>
   );
 };
