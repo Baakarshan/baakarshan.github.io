@@ -200,6 +200,28 @@ const normalizeSvg = (svg: string) => {
   return serializer.serializeToString(svgEl);
 };
 
+const applySvgSize = (svg: string, width: number, height: number) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svg, "image/svg+xml");
+  const svgEl = doc.querySelector("svg");
+  if (!svgEl) return svg;
+  svgEl.setAttribute("width", String(width));
+  svgEl.setAttribute("height", String(height));
+  const serializer = new XMLSerializer();
+  return serializer.serializeToString(svgEl);
+};
+
+const svgToDataUrl = (svg: string) =>
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+
+const loadSvgImage = (dataUrl: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("svg image load failed"));
+    image.src = dataUrl;
+  });
+
 const MIN_PNG_WIDTH = 3000;
 const RESVG_DPI = 300;
 
@@ -212,6 +234,32 @@ export const svgToPngDataUrl = async (
   const size = getSvgSize(normalized);
   const displayWidth = Math.max(size.width, MIN_PNG_WIDTH);
   const displayHeight = Math.round((displayWidth * size.height) / size.width);
+
+  if (typeof document !== "undefined") {
+    try {
+      const sizedSvg = applySvgSize(normalized, displayWidth, displayHeight);
+      const dataUrl = svgToDataUrl(sizedSvg);
+      const image = await loadSvgImage(dataUrl);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(displayWidth));
+      canvas.height = Math.max(1, Math.round(displayHeight));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("canvas context missing");
+      if (background) {
+        context.fillStyle = background;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const pngDataUrl = canvas.toDataURL("image/png");
+      return {
+        dataUrl: pngDataUrl,
+        width: Math.round(displayWidth),
+        height: Math.round(displayHeight),
+      };
+    } catch {
+      // Fallback to Resvg when Canvas export fails.
+    }
+  }
 
   await ensureResvgReady();
   const fontBuffers = await loadFontBuffers();

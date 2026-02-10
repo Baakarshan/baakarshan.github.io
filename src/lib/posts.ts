@@ -5,6 +5,7 @@ import GithubSlugger from "github-slugger";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkMdx from "remark-mdx";
+import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 import {
   getFrontmatterSlugSegment,
@@ -231,23 +232,32 @@ const extractHeadingText = (node: any): string => {
 // - 目录深度限制为 3 层，避免 TOC 过长
 // - 使用 github-slugger 保证重复标题时生成稳定锚点
 const extractToc = (content: string): TocItem[] => {
-  const tree = unified().use(remarkParse).use(remarkMdx).parse(content);
-  const slugger = new GithubSlugger();
-  const items: TocItem[] = [];
+  try {
+    const tree = unified()
+      .use(remarkParse)
+      .use(remarkMdx)
+      .use(remarkMath)
+      .parse(content);
+    const slugger = new GithubSlugger();
+    const items: TocItem[] = [];
 
-  visit(tree, "heading", (node: any) => {
-    if (node.depth > 3) return;
-    const value = extractHeadingText(node).trim();
-    if (!value) return;
-    // 同一标题可能重复，使用 github-slugger 保证唯一锚点
-    items.push({
-      depth: node.depth,
-      value,
-      slug: slugger.slug(value),
+    visit(tree, "heading", (node: any) => {
+      if (node.depth > 3) return;
+      const value = extractHeadingText(node).trim();
+      if (!value) return;
+      // 同一标题可能重复，使用 github-slugger 保证唯一锚点
+      items.push({
+        depth: node.depth,
+        value,
+        slug: slugger.slug(value),
+      });
     });
-  });
 
-  return items;
+    return items;
+  } catch {
+    // 解析异常时降级为空目录，避免 404
+    return [];
+  }
 };
 
 // 计算文章最终 slug（支持目录级与文章级覆盖）

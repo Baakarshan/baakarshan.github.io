@@ -15,8 +15,8 @@ import { remarkMermaid } from "./remark-mermaid";
 // - 关闭背景，让 CSS 统一控制代码块底色
 const prettyCodeOptions = {
   theme: {
-    dark: "github-dark-dimmed",
-    light: "github-light",
+    dark: "one-dark-pro",
+    light: "one-light",
   },
   keepBackground: false,
 };
