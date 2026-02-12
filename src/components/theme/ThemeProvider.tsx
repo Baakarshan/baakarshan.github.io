@@ -18,7 +18,7 @@ const THEME_KEY = "theme-preference";
 // 获取系统主题偏好（在非浏览器环境下回退为 dark）
 // - 该回退仅用于 SSR/构建期，避免直接访问 window 报错
 const getSystemTheme = (): ResolvedTheme => {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
 
@@ -28,9 +28,9 @@ const readStoredMode = (): ThemeMode => {
   if (typeof window === "undefined") return "system";
   try {
     const stored = localStorage.getItem(THEME_KEY);
-    return stored === "light" || stored === "dark" ? stored : "system";
+    return stored === "light" || stored === "dark" ? stored : "light";
   } catch {
-    return "system";
+    return "light";
   }
 };
 

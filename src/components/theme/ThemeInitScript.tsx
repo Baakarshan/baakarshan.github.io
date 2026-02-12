@@ -8,13 +8,8 @@ const themeInitScript = `
 (() => {
   try {
     const stored = localStorage.getItem("${THEME_KEY}");
-    const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const resolved =
-      stored === "light" || stored === "dark"
-        ? stored
-        : systemDark
-        ? "dark"
-        : "light";
+      stored === "light" || stored === "dark" ? stored : "light";
 
     const root = document.documentElement;
     root.classList.remove("theme-dark", "theme-light");
