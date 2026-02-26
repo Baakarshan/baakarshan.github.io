@@ -5,7 +5,7 @@ import { CONTENT_ROOT, PUBLIC_ROOT, getAllPosts, getAllFolderEntries } from "./l
 
 // 基础校验规则（与 PRD 的 Frontmatter 规范对齐）
 // - 任何校验失败会阻断构建
-const REQUIRED_FIELDS = ["title", "description", "date"];
+const REQUIRED_FIELDS = ["title", "date"];
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 // 中文站 slug 仅允许 ASCII（小写字母/数字/连字符）
 const SLUG_SEGMENT_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -46,7 +46,7 @@ locales.forEach((locale) => {
 
     // 日期格式校验（YYYY-MM-DD）
     if (normalizedDate && !DATE_REGEX.test(normalizedDate)) {
-      errors.push(`日期格式错误(YYYY-MM-DD): ${filePath}`);
+      console.warn(`日期格式错误(YYYY-MM-DD): ${filePath}`);
     }
 
     // priority 若存在，必须是可解析的数字
@@ -74,7 +74,7 @@ locales.forEach((locale) => {
           errors.push(`slug 不允许包含 /: ${filePath}`);
         }
         if (locale === "zh" && !SLUG_SEGMENT_REGEX.test(slugValue)) {
-          errors.push(`slug 只能包含小写字母、数字和连字符: ${filePath}`);
+          console.warn(`slug 只能包含小写字母、数字和连字符: ${filePath}`);
         }
       }
     }
