@@ -123,7 +123,7 @@ export const CodeBlock = (props: React.HTMLAttributes<HTMLPreElement>) => {
       .replace(/_/g, "-")
       .split(/[-\s]+/)
       .filter(Boolean)
-      .map((segment) =>
+      .map((segment: string) =>
         segment.length === 0
           ? segment
           : segment[0].toUpperCase() + segment.slice(1)

@@ -57,6 +57,7 @@ const getConfig = (theme: MermaidTheme) => {
       titleColor,
     },
     fontFamily: "Noto Sans SC, sans-serif",
+    htmlLabels: false,
     flowchart: {
       htmlLabels: false,
       subGraphTitleMargin: { top: 14, bottom: 16 },
@@ -64,8 +65,6 @@ const getConfig = (theme: MermaidTheme) => {
       nodeSpacing: 30,
       rankSpacing: 30,
     },
-    sequence: { htmlLabels: false },
-    classDiagram: { htmlLabels: false },
   };
 };
 
