@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 
 import { MermaidBlock } from "./MermaidBlock";
 
@@ -61,6 +61,7 @@ export const CodeBlock = (props: React.HTMLAttributes<HTMLPreElement>) => {
   // rehype-pretty-code 会把 <pre> 的 children 渲染成 <code> 节点
   // 注意：children 可能是多节点数组，需要优先锁定真正的 code 节点
   const codeElement = pickCodeNode(props.children);
+  const preRef = useRef<HTMLPreElement | null>(null);
 
   const codeText = useMemo(
     () => extractCodeText(props, codeElement),
@@ -136,9 +137,23 @@ export const CodeBlock = (props: React.HTMLAttributes<HTMLPreElement>) => {
     return <MermaidBlock code={codeText} />;
   }
 
+  const normalizeCopyText = (value: string) => value.replace(/\r\n?/g, "\n");
+
+  const getDomCodeText = () => {
+    const codeNode = preRef.current?.querySelector("code");
+    if (!codeNode) return "";
+    const lineNodes = Array.from(codeNode.querySelectorAll("span.line"));
+    if (lineNodes.length > 0) {
+      return lineNodes.map((line) => line.textContent ?? "").join("\n");
+    }
+    return codeNode.textContent ?? "";
+  };
+
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(codeText);
+      const domText = getDomCodeText();
+      const finalText = normalizeCopyText(domText || codeText);
+      await navigator.clipboard.writeText(finalText);
       setCopied(true);
       // 短暂提示复制成功，再自动还原
       setTimeout(() => setCopied(false), 1500);
@@ -200,6 +215,7 @@ export const CodeBlock = (props: React.HTMLAttributes<HTMLPreElement>) => {
       <div className="code-body">
         <pre
           {...props}
+          ref={preRef}
           className={`${props.className ?? ""}`}
         />
       </div>
