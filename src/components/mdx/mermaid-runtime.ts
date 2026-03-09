@@ -11,6 +11,55 @@ let lastTheme: MermaidTheme | null = null;
 let initialized = false;
 let renderQueue: Promise<unknown> = Promise.resolve();
 
+// Mermaid 在处理带 subgraph 的 flowchart 时会在内部 structuredClone edge。
+// 某些版本会把 d3 curve 函数挂在 edge 上，导致 structuredClone 抛 DataCloneError。
+// 这里提供一个“保留函数引用”的安全 clone，并在渲染期间临时打补丁。
+const nativeStructuredClone =
+  typeof globalThis !== "undefined" ? globalThis.structuredClone : undefined;
+
+const clonePreservingFunctions = (value: any, seen = new Map<any, any>()): any => {
+  if (typeof value === "function") return value;
+  if (value === null || typeof value !== "object") return value;
+  if (seen.has(value)) return seen.get(value);
+
+  const output: Record<string, unknown> = (Array.isArray(value) ? [] : {}) as Record<string, unknown>;
+  seen.set(value, output);
+
+  for (const [key, val] of Object.entries(value)) {
+    output[key] = clonePreservingFunctions(val, seen);
+  }
+
+  return output;
+};
+
+const safeStructuredClone = <T,>(value: T): T => {
+  if (typeof nativeStructuredClone === "function") {
+    try {
+      return nativeStructuredClone(value);
+    } catch {
+      return clonePreservingFunctions(value) as T;
+    }
+  }
+  return clonePreservingFunctions(value) as T;
+};
+
+const withSafeStructuredClone = async <T,>(task: () => Promise<T>): Promise<T> => {
+  const original = typeof globalThis !== "undefined" ? globalThis.structuredClone : undefined;
+  if (typeof original === "function") {
+    (globalThis as typeof globalThis & { structuredClone: typeof safeStructuredClone }).structuredClone =
+      safeStructuredClone as typeof original;
+  }
+
+  try {
+    return await task();
+  } finally {
+    if (typeof original === "function") {
+      (globalThis as typeof globalThis & { structuredClone: typeof original }).structuredClone =
+        original;
+    }
+  }
+};
+
 // Mermaid code 里常见会写 `&lt;T&gt;` 来避免在 MDX/HTML 场景下被当作标签。
 // 在 strict + htmlLabels=false 的组合下，这些实体会以字面量显示出来。
 // 这里做一次轻量解码（最多两轮）来兼容 `&amp;lt;` 这类双重转义。
@@ -91,13 +140,15 @@ export const renderMermaidSvg = ({
   theme: MermaidTheme;
 }): Promise<MermaidRenderResult> => {
   return runSerial(async () => {
-    ensureInitialized(theme);
-    const normalizedCode = decodeMermaidEntities(code);
-    await Promise.resolve(mermaid.parse(normalizedCode));
-    const result = await mermaid.render(id, normalizedCode);
-    return {
-      ...result,
-      svg: decodeSvgEntitiesOnce(result.svg),
-    };
+    return withSafeStructuredClone(async () => {
+      ensureInitialized(theme);
+      const normalizedCode = decodeMermaidEntities(code);
+      await Promise.resolve(mermaid.parse(normalizedCode));
+      const result = await mermaid.render(id, normalizedCode);
+      return {
+        ...result,
+        svg: decodeSvgEntitiesOnce(result.svg),
+      };
+    });
   });
 };
