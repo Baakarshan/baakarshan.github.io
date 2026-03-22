@@ -43,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="zh" suppressHydrationWarning>
       <body className="min-h-screen bg-[var(--color-canvas-default)] text-[var(--color-fg-default)] antialiased">
         {/* 首屏主题初始化，避免深浅色闪烁 */}
         <ThemeInitScript />

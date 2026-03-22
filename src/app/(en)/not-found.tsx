@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <LanguageAwareNotFound
       defaultLang="en"
-      homeHref="/"
+      homeHref="/en/"
       title="404 — Page Not Found"
       description="The model guessed a path that does not exist. Let&apos;s head back."
       actionLabel="Return Home"

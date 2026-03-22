@@ -10,10 +10,10 @@ export const metadata: Metadata = {
   title: "目录",
   description: "完整知识目录。",
   alternates: {
-    canonical: `${siteConfig.siteUrl}/zh/directory/`,
+    canonical: `${siteConfig.siteUrl}/directory/`,
     languages: {
-      en: `${siteConfig.siteUrl}/directory/`,
-      zh: `${siteConfig.siteUrl}/zh/directory/`,
+      en: `${siteConfig.siteUrl}/en/directory/`,
+      zh: `${siteConfig.siteUrl}/directory/`,
     },
   },
 };

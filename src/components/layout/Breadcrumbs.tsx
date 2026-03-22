@@ -18,8 +18,8 @@ export const Breadcrumbs = ({
   segments: string[];
   labels?: string[];
 }) => {
-  // 语言前缀：中文站点统一带 /zh
-  const base = locale === "zh" ? "/zh" : "";
+  // 语言前缀：英文站点统一带 /en
+  const base = locale === "en" ? "/en" : "";
   // 首页文案与链接保持与语言一致
   const homeLabel = locale === "zh" ? "首页" : "Home";
   const homeHref = base ? `${base}/` : "/";

@@ -25,13 +25,13 @@ const BLOCK_SHADOW_OPTIONS = [
   { label: "稍重", value: "heavy" },
 ];
 
-// 通过路径判断语言（/zh 开头即中文）
+// 通过路径判断语言（/en 开头即英文）
 // - 仅依赖路径前缀，不做自动重定向
-// - 任何未知路径默认落入英文，避免误判导致跳转
+// - 任何未知路径默认落入中文，避免误判导致跳转
 const getLocaleFromPath = (pathname: string) =>
-  pathname.startsWith("/zh") ? "zh" : "en";
+  /^\/en(\/|$)/.test(pathname) ? "en" : "zh";
 
-const toBasePath = (locale: Locale) => (locale === "zh" ? "/zh" : "");
+const toBasePath = (locale: Locale) => (locale === "en" ? "/en" : "");
 
 // 统一带尾斜杠的路径（与 trailingSlash: true 一致）
 // - 保证静态导出时不会出现无斜杠的 404
@@ -51,7 +51,7 @@ const safeDecodePath = (value: string) => {
 };
 const toSlugSegments = (value: string) => {
   const decoded = safeDecodePath(value);
-  const withoutLocale = decoded.replace(/^\/zh(\/|$)/, "/");
+  const withoutLocale = decoded.replace(/^\/en(\/|$)/, "/");
   return withoutLocale.split("/").filter(Boolean);
 };
 const isSameSlug = (a: string[], b: string[]) =>
@@ -225,7 +225,7 @@ export const Sidebar = ({
 
   const handleLanguageSwitch = () => {
     // 语言切换后自动打开个人菜单（仅一次），方便继续切换主题/宽度等
-    const target = locale === "zh" ? "/" : "/zh/";
+    const target = locale === "zh" ? "/en/" : "/";
     localStorage.setItem(PROFILE_POPOVER_ONCE_KEY, "1");
     router.push(target);
   };
@@ -308,7 +308,10 @@ export const Sidebar = ({
   // - 仅处理当前语言路径
   // - 保证新页面能看到当前位置的目录上下文
   useEffect(() => {
-    const segments = pathname.replace(/^\/zh/, "").split("/").filter(Boolean);
+    const segments = pathname
+      .replace(/^\/en(?=\/|$)/, "")
+      .split("/")
+      .filter(Boolean);
     if (segments.length === 0) return;
     setOpenMap((previous) => {
       const updates: Record<string, boolean> = { ...previous };

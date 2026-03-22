@@ -15,10 +15,10 @@ const staticRoutes = [
   "/directory",
   "/search",
   "/resume",
-  "/zh",
-  "/zh/directory",
-  "/zh/search",
-  "/zh/resume",
+  "/en",
+  "/en/directory",
+  "/en/search",
+  "/en/resume",
 ];
 
 // 统一带 / 的 URL（与 Next trailingSlash 配置一致）

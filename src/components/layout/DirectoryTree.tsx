@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ContentTreeNode, Locale } from "@/lib/posts";
 
 // 目录树渲染：用于 /directory 与目录页
-const toBasePath = (locale: Locale) => (locale === "zh" ? "/zh" : "");
+const toBasePath = (locale: Locale) => (locale === "en" ? "/en" : "");
 
 // 统一添加尾斜杠，避免静态导出时的路径不一致
 const withTrailingSlash = (value: string) =>

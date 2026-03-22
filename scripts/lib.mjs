@@ -204,7 +204,7 @@ export const getAllFolderEntries = (locale) => {
 // 将 slug 段拼接成 URL（符合 trailingSlash 规则）
 // - 与 Next.js trailingSlash 配置一致
 export const toUrl = (locale, slug) => {
-  const base = locale === "zh" ? "/zh" : "";
+  const base = locale === "en" ? "/en" : "";
   if (!slug.length) return base || "/";
   return `${base}/${slug.join("/")}/`;
 };

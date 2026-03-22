@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 // 根据路径判断语言（用于 404 自适应）
 const getLangFromPath = (pathname: string) =>
-  pathname.startsWith("/zh") ? "zh" : "en";
+  /^\/en(\/|$)/.test(pathname) ? "en" : "zh";
 
 type NotFoundCopy = {
   title: string;
@@ -27,14 +27,14 @@ const zhCopy: NotFoundCopy = {
   title: "404 — 页面不存在",
   description: "模型猜测了一个不存在的路径，让我们返回首页。",
   actionLabel: "返回首页",
-  homeHref: "/zh/",
+  homeHref: "/",
 };
 
 const enCopy: NotFoundCopy = {
   title: "404 — Page Not Found",
   description: "The model guessed a path that does not exist. Let&apos;s head back.",
   actionLabel: "Return Home",
-  homeHref: "/",
+  homeHref: "/en/",
 };
 
 export const LanguageAwareNotFound = ({

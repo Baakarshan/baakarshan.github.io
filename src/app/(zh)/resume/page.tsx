@@ -3,28 +3,28 @@ import type { Metadata } from "next";
 import { GiscusComments } from "@/components/comments/GiscusComments";
 import { siteConfig } from "@/lib/site";
 
-// 简历页 SEO 元信息
+// 中文简历页 SEO 元信息
 export const metadata: Metadata = {
-  title: "Resume",
-  description: "Professional resume.",
+  title: "简历",
+  description: "个人简历。",
   alternates: {
     canonical: `${siteConfig.siteUrl}/resume/`,
     languages: {
-      en: `${siteConfig.siteUrl}/resume/`,
-      zh: `${siteConfig.siteUrl}/zh/resume/`,
+      en: `${siteConfig.siteUrl}/en/resume/`,
+      zh: `${siteConfig.siteUrl}/resume/`,
     },
   },
 };
 
-export default function ResumePage() {
+export default function ZhResumePage() {
   return (
     <div className="mx-auto max-w-[820px] space-y-8">
       <header>
         <h1 className="text-lg font-semibold text-[var(--color-fg-default)]">
-          Resume
+          简历
         </h1>
         <p className="mt-2 text-sm text-[var(--color-fg-muted)]">
-          A compact overview tailored for engineering collaborators.
+          面向技术协作的简洁版概览。
         </p>
       </header>
 
@@ -32,32 +32,31 @@ export default function ResumePage() {
       <section className="grid grid-cols-12 gap-6">
         <div className="col-span-5 rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-4">
           <h2 className="text-sm font-semibold text-[var(--color-fg-default)]">
-            Profile
+            个人摘要
           </h2>
           <p className="mt-2 text-xs leading-5 text-[var(--color-fg-muted)]">
-            Product-focused engineer building knowledge tooling, collaboration
-            systems, and UI frameworks for technical teams.
+            专注知识系统、工程效率与产品设计的开发者。
           </p>
           <div className="mt-4 text-xs text-[var(--color-fg-muted)]">
-            <div>Location: Remote</div>
-            <div>Email: hello@baakarshan.dev</div>
-            <div>GitHub: baakarshan</div>
+            <div>地点：Remote</div>
+            <div>邮箱：hello@baakarshan.dev</div>
+            <div>GitHub：baakarshan</div>
           </div>
         </div>
 
         <div className="col-span-7 rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-4">
           <h2 className="text-sm font-semibold text-[var(--color-fg-default)]">
-            Skills
+            技能
           </h2>
           <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-[var(--color-fg-muted)]">
-            <div>System Design</div>
-            <div>Design Systems</div>
+            <div>系统设计</div>
+            <div>设计系统</div>
             <div>Next.js / React</div>
             <div>TypeScript</div>
-            <div>Search & Indexing</div>
-            <div>MDX Pipelines</div>
-            <div>Performance Tuning</div>
-            <div>Content Ops</div>
+            <div>搜索索引</div>
+            <div>MDX 管线</div>
+            <div>性能优化</div>
+            <div>内容运营</div>
           </div>
         </div>
       </section>
@@ -65,16 +64,16 @@ export default function ResumePage() {
       {/* 经验区块 */}
       <section className="rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-4">
         <h2 className="text-sm font-semibold text-[var(--color-fg-default)]">
-          Experience
+          经验
         </h2>
         <div className="mt-3 space-y-4 text-xs text-[var(--color-fg-muted)]">
           <div>
             <div className="text-[var(--color-fg-default)]">Staff Engineer</div>
-            <div>Knowledge tooling, AI workflows, and content systems.</div>
+            <div>知识工具、AI 工作流与内容系统。</div>
           </div>
           <div>
             <div className="text-[var(--color-fg-default)]">Product Engineer</div>
-            <div>Developer platforms, design systems, and analytics.</div>
+            <div>开发者平台、设计系统与数据分析。</div>
           </div>
         </div>
       </section>
@@ -82,15 +81,15 @@ export default function ResumePage() {
       {/* 教育信息 */}
       <section className="rounded-md border border-[var(--color-border-default)] bg-[var(--color-canvas-subtle)] p-4">
         <h2 className="text-sm font-semibold text-[var(--color-fg-default)]">
-          Education
+          教育
         </h2>
         <p className="mt-2 text-xs text-[var(--color-fg-muted)]">
-          B.S. in Computer Science
+          计算机科学学士
         </p>
       </section>
 
       {/* 简历页独立评论区 */}
-      <GiscusComments locale="en" />
+      <GiscusComments locale="zh" />
     </div>
   );
 }

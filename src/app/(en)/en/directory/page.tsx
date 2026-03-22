@@ -10,10 +10,10 @@ export const metadata: Metadata = {
   title: "Directory",
   description: "Full content directory.",
   alternates: {
-    canonical: `${siteConfig.siteUrl}/directory/`,
+    canonical: `${siteConfig.siteUrl}/en/directory/`,
     languages: {
-      en: `${siteConfig.siteUrl}/directory/`,
-      zh: `${siteConfig.siteUrl}/zh/directory/`,
+      en: `${siteConfig.siteUrl}/en/directory/`,
+      zh: `${siteConfig.siteUrl}/directory/`,
     },
   },
 };

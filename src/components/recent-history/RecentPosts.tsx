@@ -4,8 +4,8 @@ import { format } from "date-fns";
 import type { Locale, PostMeta } from "@/lib/posts";
 import { parseYmdToLocalDate } from "@/lib/date";
 
-// 根据语言返回基础路由前缀（中文站点使用 /zh）
-const toBasePath = (locale: Locale) => (locale === "zh" ? "/zh" : "");
+// 根据语言返回基础路由前缀（英文站点使用 /en）
+const toBasePath = (locale: Locale) => (locale === "en" ? "/en" : "");
 
 // 统一添加尾斜杠，避免静态导出下的路径歧义
 const withTrailingSlash = (value: string) =>

@@ -19,33 +19,33 @@ import {
 import { siteConfig } from "@/lib/site";
 import { parseYmdToLocalDate } from "@/lib/date";
 
-// 预先生成中文站 slug 集合，用于构建 alternates
-// - 只在构建期执行，避免运行时重复扫描文件系统
-const zhPostSlugSet = new Set(
-  getAllPostSlugs("zh").map((slug) => slug.join("/"))
+// 预先生成英文站 slug 集合，用于构建 alternates
+// - 构建期生成，避免运行时扫描文件系统
+const enPostSlugSet = new Set(
+  getAllPostSlugs("en").map((slug) => slug.join("/"))
 );
-const zhFolderSlugSet = new Set(
-  getAllFolderSlugs("zh").map((slug) => slug.join("/"))
+const enFolderSlugSet = new Set(
+  getAllFolderSlugs("en").map((slug) => slug.join("/"))
 );
-const hasZhSlug = (slugSegments: string[]) => {
-  // 通过 slug 集合判断中文站是否存在对应路径
+const hasEnSlug = (slugSegments: string[]) => {
+  // 通过 slug 集合判断英文站是否存在对应路径
   const key = slugSegments.join("/");
-  return zhPostSlugSet.has(key) || zhFolderSlugSet.has(key);
+  return enPostSlugSet.has(key) || enFolderSlugSet.has(key);
 };
 const buildAlternates = (slugSegments: string[]) => {
-  // 仅当中文站存在对应路径时才输出 alternates
-  if (!hasZhSlug(slugSegments)) return null;
+  // 仅当英文站存在对应路径时才输出 alternates
+  if (!hasEnSlug(slugSegments)) return null;
   return {
-    en: `${siteConfig.siteUrl}/${slugSegments.join("/")}/`,
-    zh: `${siteConfig.siteUrl}/zh/${slugSegments.join("/")}/`,
+    en: `${siteConfig.siteUrl}/en/${slugSegments.join("/")}/`,
+    zh: `${siteConfig.siteUrl}/${slugSegments.join("/")}/`,
   };
 };
 
 export const generateStaticParams = async () => {
   // 文章页 + 目录页统一进入静态路由
   // - 使用 Map 去重，避免同一路径重复生成
-  const postSlugs = getAllPostSlugs("en");
-  const folderSlugs = getAllFolderSlugs("en");
+  const postSlugs = getAllPostSlugs("zh");
+  const folderSlugs = getAllFolderSlugs("zh");
   const map = new Map<string, string[]>();
   [...postSlugs, ...folderSlugs].forEach((slug) => {
     map.set(slug.join("/"), slug);
@@ -79,7 +79,7 @@ export const generateMetadata = async ({
   let post;
   try {
     // 优先按文章解析
-    post = getPostBySlug("en", slugSegments);
+    post = getPostBySlug("zh", slugSegments);
   } catch {
     post = null;
   }
@@ -103,14 +103,14 @@ export const generateMetadata = async ({
   }
 
   // 再尝试按目录页解析
-  // - 目录页只输出基本 metadata，不输出 OpenGraph 的封面替换
-  const folderNode = getFolderNodeBySlug("en", slugSegments);
+  // - 目录页仅输出基础描述信息
+  const folderNode = getFolderNodeBySlug("zh", slugSegments);
   if (folderNode) {
     const canonical = `${siteConfig.siteUrl}/${slugSegments.join("/")}/`;
     const languages = buildAlternates(slugSegments);
     return {
-      title: `${folderNode.displayName} · Directory`,
-      description: `Folder overview for ${folderNode.displayName}.`,
+      title: `${folderNode.displayName} · 目录`,
+      description: `${folderNode.displayName} 目录概览。`,
       alternates: {
         canonical,
         ...(languages ? { languages } : {}),
@@ -119,7 +119,7 @@ export const generateMetadata = async ({
   }
 
   return {
-    title: "Not Found",
+    title: "未找到",
     robots: {
       index: false,
       follow: false,
@@ -127,7 +127,7 @@ export const generateMetadata = async ({
   };
 };
 
-export default async function ArticlePage({
+export default async function ZhArticlePage({
   params,
 }: {
   params: Promise<{ slug: string[] }>;
@@ -144,11 +144,11 @@ export default async function ArticlePage({
   }
 
   // 面包屑显示名来自目录树，避免直接显示 slug
-  const breadcrumbLabels = getBreadcrumbLabels("en", slugSegments);
+  const breadcrumbLabels = getBreadcrumbLabels("zh", slugSegments);
 
   let post;
   try {
-    post = getPostBySlug("en", slugSegments);
+    post = getPostBySlug("zh", slugSegments);
   } catch {
     post = null;
   }
@@ -156,7 +156,7 @@ export default async function ArticlePage({
   if (!post) {
     // 当非文章时尝试渲染目录页
     // - 目录页只展示目录结构，不渲染 MDX 正文
-    const folderNode = getFolderNodeBySlug("en", slugSegments);
+    const folderNode = getFolderNodeBySlug("zh", slugSegments);
     if (!folderNode) {
       notFound();
     }
@@ -164,15 +164,15 @@ export default async function ArticlePage({
       <div>
         <PageTopbar title={folderNode.displayName} />
         <Breadcrumbs
-          locale="en"
+          locale="zh"
           segments={slugSegments}
           labels={breadcrumbLabels}
         />
         <header>
           <h1>{folderNode.displayName}</h1>
-          <p className="subtitle">Folder overview and child entries.</p>
+          <p className="subtitle">目录概览与子内容列表。</p>
         </header>
-        <DirectoryTree nodes={folderNode.children ?? []} locale="en" />
+        <DirectoryTree nodes={folderNode.children ?? []} locale="zh" />
       </div>
     );
   }
@@ -208,7 +208,7 @@ export default async function ArticlePage({
         <div className="article-main">
           <div className="meta-row">
             <Breadcrumbs
-              locale="en"
+              locale="zh"
               segments={slugSegments}
               labels={breadcrumbLabels}
             />
@@ -224,7 +224,7 @@ export default async function ArticlePage({
             <MDXRenderer source={post.content} />
           </div>
 
-          <GiscusComments locale="en" />
+          <GiscusComments locale="zh" />
         </div>
       </div>
     </article>

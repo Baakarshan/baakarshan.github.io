@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   title: "Search",
   description: "Search the knowledge base.",
   alternates: {
-    canonical: `${siteConfig.siteUrl}/search/`,
+    canonical: `${siteConfig.siteUrl}/en/search/`,
     languages: {
-      en: `${siteConfig.siteUrl}/search/`,
-      zh: `${siteConfig.siteUrl}/zh/search/`,
+      en: `${siteConfig.siteUrl}/en/search/`,
+      zh: `${siteConfig.siteUrl}/search/`,
     },
   },
 };

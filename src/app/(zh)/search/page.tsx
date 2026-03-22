@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   title: "搜索",
   description: "搜索知识库。",
   alternates: {
-    canonical: `${siteConfig.siteUrl}/zh/search/`,
+    canonical: `${siteConfig.siteUrl}/search/`,
     languages: {
-      en: `${siteConfig.siteUrl}/search/`,
-      zh: `${siteConfig.siteUrl}/zh/search/`,
+      en: `${siteConfig.siteUrl}/en/search/`,
+      zh: `${siteConfig.siteUrl}/search/`,
     },
   },
 };
