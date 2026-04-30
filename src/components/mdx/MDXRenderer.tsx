@@ -8,6 +8,7 @@ import rehypePrettyCode from "rehype-pretty-code";
 
 import { mdxComponents } from "./components";
 import { remarkMermaid } from "./remark-mermaid";
+import { rehypeUnwrapImages } from "./rehype-unwrap-images";
 
 // Shiki 主题配置（与 Copilot 风格对齐）
 // - 深色使用 github-dark-dimmed
@@ -34,6 +35,7 @@ export const MDXRenderer = ({ source }: { source: string }) => {
             // rehype：处理 HTML AST 与插件链
             rehypeSlug,
             rehypeAutolinkHeadings,
+            rehypeUnwrapImages,
             [rehypePrettyCode, prettyCodeOptions],
             rehypeKatex,
           ],
