@@ -11,24 +11,24 @@ export const rehypeUnwrapImages = () => {
     const walk = (node: any) => {
       if (!Array.isArray(node?.children)) return;
 
-      node.children = node.children.map((child: any) => {
+      node.children = node.children.flatMap((child: any) => {
         if (child?.type !== "element" || child.tagName !== "p") {
           walk(child);
-          return child;
+          return [child];
         }
 
         const meaningfulChildren = (child.children ?? []).filter(
           (item: any) => !isWhitespace(item)
         );
         if (
-          meaningfulChildren.length === 1 &&
-          isImageElement(meaningfulChildren[0])
+          meaningfulChildren.length > 0 &&
+          meaningfulChildren.every(isImageElement)
         ) {
-          return meaningfulChildren[0];
+          return meaningfulChildren;
         }
 
         walk(child);
-        return child;
+        return [child];
       });
     };
 
