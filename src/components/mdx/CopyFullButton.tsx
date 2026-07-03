@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { unified } from "unified";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import rehypeKatex from "rehype-katex";
@@ -22,20 +21,31 @@ type MermaidBlock = {
   code: string;
 };
 
+type RemarkCodeNode = {
+  lang?: string;
+  value?: unknown;
+  position?: {
+    start?: { offset?: number };
+    end?: { offset?: number };
+  };
+};
+
 type CopyStatus = "idle" | "copying" | "success" | "error";
 
 // 从 MDX 中抽取 Mermaid 代码块位置（用于原文替换）
 const collectMermaidBlocks = (content: string) => {
-  const tree = unified().use(remarkParse).use(remarkMdx).parse(content);
+  const tree = unified().use(remarkParse).parse(content);
   const blocks: MermaidBlock[] = [];
 
-  visit(tree, "code", (node: any) => {
-    const lang = typeof node.lang === "string" ? node.lang.toLowerCase() : "";
+  visit(tree, "code", (node) => {
+    const codeNode = node as RemarkCodeNode;
+    const lang =
+      typeof codeNode.lang === "string" ? codeNode.lang.toLowerCase() : "";
     if (lang !== "mermaid") return;
-    const start = node.position?.start?.offset;
-    const end = node.position?.end?.offset;
+    const start = codeNode.position?.start?.offset;
+    const end = codeNode.position?.end?.offset;
     if (typeof start !== "number" || typeof end !== "number") return;
-    blocks.push({ start, end, code: String(node.value ?? "") });
+    blocks.push({ start, end, code: String(codeNode.value ?? "") });
   });
 
   return blocks.sort((a, b) => a.start - b.start);
@@ -43,6 +53,25 @@ const collectMermaidBlocks = (content: string) => {
 
 // Mermaid 渲染为 SVG：复制链路固定字体 + 关闭 htmlLabels
 // - htmlLabels 依赖 foreignObject，Resvg 不稳定
+const withTimeout = <T,>(task: Promise<T>, timeoutMs: number, label: string) => {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      reject(new Error(`${label} timed out`));
+    }, timeoutMs);
+
+    task.then(
+      (value) => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timeout);
+        reject(error);
+      }
+    );
+  });
+};
+
 const renderMermaidPng = async (
   code: string,
   theme: "light" | "dark",
@@ -58,7 +87,7 @@ const renderMermaidPng = async (
 const replaceMermaidWithImages = (
   content: string,
   blocks: MermaidBlock[],
-  images: MermaidImage[]
+  images: Array<MermaidImage | null>
 ) => {
   if (blocks.length === 0) return content;
   let result = "";
@@ -66,7 +95,10 @@ const replaceMermaidWithImages = (
 
   blocks.forEach((block, index) => {
     result += content.slice(lastIndex, block.start);
-    result += `![](${images[index].dataUrl})`;
+    const image = images[index];
+    result += image
+      ? `![](${image.dataUrl})`
+      : content.slice(block.start, block.end);
     lastIndex = block.end;
   });
 
@@ -99,7 +131,6 @@ const markdownToHtml = async (markdown: string) => {
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkMath)
-    .use(remarkMdx)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeKatex)
@@ -117,7 +148,7 @@ const buildClipboardPayload = async (
 ) => {
   const blocks = collectMermaidBlocks(content);
   const cache = new Map<string, MermaidImage>();
-  const images: MermaidImage[] = [];
+  const images: Array<MermaidImage | null> = [];
 
   for (let index = 0; index < blocks.length; index += 1) {
     const code = blocks[index].code;
@@ -125,13 +156,28 @@ const buildClipboardPayload = async (
       images.push(cache.get(code)!);
       continue;
     }
-    const png = await renderMermaidPng(code, theme, index);
-    cache.set(code, png);
-    images.push(png);
+    try {
+      const png = await withTimeout(
+        renderMermaidPng(code, theme, index),
+        8000,
+        `Mermaid ${index + 1}`
+      );
+      cache.set(code, png);
+      images.push(png);
+    } catch (error) {
+      console.warn("Mermaid 导出失败，保留原始代码块", error);
+      images.push(null);
+    }
   }
 
   const markdown = replaceMermaidWithImages(content, blocks, images);
-  const html = injectImageSizeToHtml(await markdownToHtml(markdown), images);
+  const renderedImages = images.filter(
+    (image): image is MermaidImage => image !== null
+  );
+  const html = injectImageSizeToHtml(
+    await markdownToHtml(markdown),
+    renderedImages
+  );
   return { markdown, html };
 };
 

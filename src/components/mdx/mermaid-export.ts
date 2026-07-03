@@ -217,8 +217,17 @@ const svgToDataUrl = (svg: string) =>
 const loadSvgImage = (dataUrl: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("svg image load failed"));
+    const timeout = window.setTimeout(() => {
+      reject(new Error("svg image load timed out"));
+    }, 5000);
+    image.onload = () => {
+      window.clearTimeout(timeout);
+      resolve(image);
+    };
+    image.onerror = () => {
+      window.clearTimeout(timeout);
+      reject(new Error("svg image load failed"));
+    };
     image.src = dataUrl;
   });
 
