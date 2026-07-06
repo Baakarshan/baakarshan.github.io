@@ -62,6 +62,19 @@ export type ContentTreeNode = {
 // content 根目录
 const contentRoot = path.join(process.cwd(), "content");
 
+const mdxFilesCache = new Map<string, string[]>();
+const postFileCache = new Map<
+  string,
+  { data: Record<string, unknown>; content: string }
+>();
+const directoryIndexMapCache = new Map<
+  string,
+  Map<string, DirectoryIndexInfo>
+>();
+const postPathBySlugCache = new Map<string, Map<string, string>>();
+const allPostsCache = new Map<Locale, PostMeta[]>();
+const contentTreeCache = new Map<Locale, ContentTreeNode[]>();
+
 // 展示名：title 缺失时回退到文件名（仅去扩展名）
 const toDisplayName = (name: string) => stripExtension(name);
 
@@ -118,23 +131,37 @@ const isMdxFile = (name: string) => name.toLowerCase().endsWith(".mdx");
 const listDir = (dir: string) => fs.readdirSync(dir, { withFileTypes: true });
 
 // 递归收集所有 MDX 文件（用于生成索引与静态路由）
-const getAllMdxFiles = (dir: string, files: string[] = []) => {
-  for (const entry of listDir(dir)) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      getAllMdxFiles(fullPath, files);
-    } else if (entry.isFile() && isMdxFile(entry.name)) {
-      files.push(fullPath);
+const getAllMdxFiles = (dir: string) => {
+  const cached = mdxFilesCache.get(dir);
+  if (cached) return cached;
+
+  const files: string[] = [];
+  const walk = (currentDir: string) => {
+    for (const entry of listDir(currentDir)) {
+      const fullPath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile() && isMdxFile(entry.name)) {
+        files.push(fullPath);
+      }
     }
-  }
+  };
+
+  walk(dir);
+  mdxFilesCache.set(dir, files);
   return files;
 };
 
 // 读取 MDX 内容并解析 frontmatter
 const readPostFile = (filePath: string) => {
+  const cached = postFileCache.get(filePath);
+  if (cached) return cached;
+
   const raw = fs.readFileSync(filePath, "utf8");
   const { data, content } = matter(raw);
-  return { data, content };
+  const parsed = { data: data as Record<string, unknown>, content };
+  postFileCache.set(filePath, parsed);
+  return parsed;
 };
 
 // 构建“目录同名 MDX”索引表：
@@ -145,6 +172,9 @@ const readPostFile = (filePath: string) => {
 // - 目录页（同名 MDX）可作为目录节点的显示名与排序来源
 // - 目录级 slug 覆盖会影响其下所有子路径
 const buildDirectoryIndexMap = (localeRoot: string) => {
+  const cached = directoryIndexMapCache.get(localeRoot);
+  if (cached) return cached;
+
   const map = new Map<string, DirectoryIndexInfo>();
   const files = getAllMdxFiles(localeRoot);
 
@@ -170,6 +200,7 @@ const buildDirectoryIndexMap = (localeRoot: string) => {
     });
   }
 
+  directoryIndexMapCache.set(localeRoot, map);
   return map;
 };
 
@@ -277,10 +308,13 @@ const getPostSlugSegments = (
 //
 // 性能说明：
 // - 该函数仅在构建/服务端调用，避免在客户端执行
-const resolveSlugToFile = (localeRoot: string, slugSegments: string[]) => {
-  const target = slugSegments.join("/");
+const buildPostPathBySlugMap = (localeRoot: string) => {
+  const cached = postPathBySlugCache.get(localeRoot);
+  if (cached) return cached;
+
   const files = getAllMdxFiles(localeRoot);
   const dirIndexMap = buildDirectoryIndexMap(localeRoot);
+  const map = new Map<string, string>();
 
   for (const filePath of files) {
     const { data } = readPostFile(filePath);
@@ -291,10 +325,17 @@ const resolveSlugToFile = (localeRoot: string, slugSegments: string[]) => {
       data,
       dirIndexMap
     ).join("/");
-    if (candidate === target) {
-      return filePath;
-    }
+    map.set(candidate, filePath);
   }
+
+  postPathBySlugCache.set(localeRoot, map);
+  return map;
+};
+
+const resolveSlugToFile = (localeRoot: string, slugSegments: string[]) => {
+  const target = slugSegments.join("/");
+  const filePath = buildPostPathBySlugMap(localeRoot).get(target);
+  if (filePath) return filePath;
 
   throw new Error(`未找到文章: ${slugSegments.join("/")}`);
 };
@@ -306,6 +347,9 @@ const resolveSlugToFile = (localeRoot: string, slugSegments: string[]) => {
 //
 // 注意：allowCopy 默认为 false，仅当 frontmatter 为 true 时启用
 export const getAllPosts = (locale: Locale): PostMeta[] => {
+  const cached = allPostsCache.get(locale);
+  if (cached) return cached;
+
   const localeRoot = getLocaleRoot(locale);
   const files = getAllMdxFiles(localeRoot);
   const posts: PostMeta[] = [];
@@ -338,6 +382,7 @@ export const getAllPosts = (locale: Locale): PostMeta[] => {
     return bTime - aTime;
   });
 
+  allPostsCache.set(locale, posts);
   return posts;
 };
 
@@ -466,9 +511,14 @@ const buildTree = (
 // 对外提供的目录树入口
 // - Sidebar / Directory 页面统一依赖该树，确保一致性
 export const getContentTree = (locale: Locale) => {
+  const cached = contentTreeCache.get(locale);
+  if (cached) return cached;
+
   const localeRoot = getLocaleRoot(locale);
   const dirIndexMap = buildDirectoryIndexMap(localeRoot);
-  return buildTree(localeRoot, [], [], locale, localeRoot, dirIndexMap);
+  const tree = buildTree(localeRoot, [], [], locale, localeRoot, dirIndexMap);
+  contentTreeCache.set(locale, tree);
+  return tree;
 };
 
 // 收集所有目录 slug（用于生成目录页静态路由）

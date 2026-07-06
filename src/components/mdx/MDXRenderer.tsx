@@ -22,6 +22,10 @@ const prettyCodeOptions = {
   keepBackground: false,
 };
 
+const katexOptions = {
+  strict: false,
+};
+
 // 统一 MDX 渲染入口：Markdown + GFM + KaTeX + 代码高亮
 export const MDXRenderer = ({ source }: { source: string }) => {
   return (
@@ -37,7 +41,7 @@ export const MDXRenderer = ({ source }: { source: string }) => {
             rehypeAutolinkHeadings,
             rehypeUnwrapImages,
             [rehypePrettyCode, prettyCodeOptions],
-            rehypeKatex,
+            [rehypeKatex, katexOptions],
           ],
         },
       }}

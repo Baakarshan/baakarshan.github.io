@@ -32,6 +32,10 @@ type RemarkCodeNode = {
 
 type CopyStatus = "idle" | "copying" | "success" | "error";
 
+const katexOptions = {
+  strict: false,
+};
+
 // 从 MDX 中抽取 Mermaid 代码块位置（用于原文替换）
 const collectMermaidBlocks = (content: string) => {
   const tree = unified().use(remarkParse).parse(content);
@@ -133,7 +137,7 @@ const markdownToHtml = async (markdown: string) => {
     .use(remarkMath)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
-    .use(rehypeKatex)
+    .use(rehypeKatex, katexOptions)
     .use(rehypeStringify, { allowDangerousHtml: true })
     .process(markdown);
   return String(file);
