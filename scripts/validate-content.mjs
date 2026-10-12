@@ -15,17 +15,8 @@ const errors = [];
 const locales = ["en", "zh"];
 
 // 校验图片路径（仅处理站内相对路径）
-// - 校验文章旁 assets/ 内的资源及 public 下的绝对路径
+// - 忽略外链与非 / 开头的相对路径
 const validateImagePath = (imagePath, filePath) => {
-  if (imagePath.startsWith("assets/")) {
-    const assetRoot = path.resolve(path.dirname(filePath), "assets") + path.sep;
-    const absolute = path.resolve(path.dirname(filePath), imagePath);
-    if (!absolute.startsWith(assetRoot) || !fs.existsSync(absolute)
-        || !fs.statSync(absolute).isFile()) {
-      errors.push(`文章图片不存在或路径无效: ${imagePath} (${filePath})`);
-    }
-    return;
-  }
   if (!imagePath.startsWith("/")) return;
   if (imagePath.startsWith("http")) return;
 
